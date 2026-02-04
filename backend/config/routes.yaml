@@ -1,0 +1,12 @@
+# config/routes.yaml
+
+controllers:
+    resource:
+        path: ../src/Controller/
+        namespace: App\Controller
+    type: attribute
+
+# AJOUTE CECI SI CE N'EST PAS PRÉSENT :
+api_login_check:
+    path: /api/login_check
+    methods: ['POST']

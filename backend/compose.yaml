@@ -1,0 +1,30 @@
+version: '3.8'
+
+services:
+  database:
+    image: mysql:8.0
+    container_name: mdlp_mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: mdlp_backend
+    ports:
+      - "3306:3306"
+    volumes:
+      - db_data:/var/lib/mysql
+
+  # Interface graphique pour gérer la BDD (comme PHPMyAdmin dans XAMPP)
+  pma:
+    image: phpmyadmin/phpmyadmin
+    container_name: mdlp_pma
+    environment:
+      PMA_HOST: database
+      PMA_USER: root
+      PMA_PASSWORD: root
+    ports:
+      - "8081:80"
+    depends_on:
+      - database
+
+volumes:
+  db_data:
