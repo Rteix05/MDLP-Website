@@ -3,67 +3,102 @@
 namespace App\Controller;
 
 use App\Entity\User;
-use App\Service\EmailService;
 use Doctrine\ORM\EntityManagerInterface;
+use Symfony\Bridge\Twig\Mime\TemplatedEmail;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\Mailer\MailerInterface;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
+use Symfony\Component\RateLimiter\RateLimiterFactory;
 use Symfony\Component\Routing\Attribute\Route;
 
-#[Route('/api', name: 'api_reset_password_')]
+#[Route('/api')]
 class ResetPasswordController extends AbstractController
 {
-    #[Route('/forgot-password', name: 'request', methods: ['POST'])]
-    public function requestReset(Request $request, EntityManagerInterface $em, EmailService $emailService): JsonResponse
+    #[Route('/forgot-password', name: 'api_forgot_password', methods: ['POST'])]
+    public function forgotPassword(Request $request, EntityManagerInterface $em, MailerInterface $mailer, RateLimiterFactory $authForgotPasswordLimiter): JsonResponse
     {
+        $limiter = $authForgotPasswordLimiter->create($request->getClientIp());
+        if (!$limiter->consume()->isAccepted()) {
+            return $this->json(['message' => 'Trop de tentatives. Veuillez r\u00e9essayer plus tard.'], 429);
+        }
+
         $data = json_decode($request->getContent(), true);
-        $email = $data['email'] ?? '';
+        $email = $data['email'] ?? null;
+
+        if (!$email) {
+            return $this->json(['message' => 'Email requis'], 400);
+        }
 
         $user = $em->getRepository(User::class)->findOneBy(['email' => $email]);
 
         if ($user) {
+            // 1. Générer un token unique
             $token = bin2hex(random_bytes(32));
-            $expiresAt = new \DateTimeImmutable('+1 hour');
-
             $user->setResetToken($token);
-            $user->setResetTokenExpiresAt($expiresAt);
+            $user->setResetTokenExpiresAt(new \DateTimeImmutable('+1 hour'));
             $em->flush();
 
-            $link = "http://localhost:3000/reset-password?token=" . $token;
+            // 2. Préparer le lien pour le frontend
+            $frontendUrl = $_ENV['FRONTEND_URL'] ?? 'http://127.0.0.1:3000'; // Lien vers ton Next.js
+            $resetLink = $frontendUrl . '/reset-password?token=' . $token;
 
-            $content = "<h1>Mot de passe oublie</h1><p>Cliquez ici : <a href='$link'>Reinitialiser</a></p>";
+            // 3. Envoyer l'email avec ton super design Twig !
+            try {
+                $emailMessage = (new TemplatedEmail())
+                    ->from('contact@mdlp.fr')
+                    ->to($user->getEmail())
+                    ->subject('Réinitialisation de votre mot de passe - MDLP')
+                    ->htmlTemplate('emails/reset_password.html.twig')
+                    ->context([
+                        'user' => $user,
+                        'resetUrl' => $resetLink
+                    ]);
 
-            // J'ai mis ton adresse en dur ici pour être SUR que ça arrive chez toi pour le test
-            $emailService->sendEmail('eis95xx@gmail.com', 'Reset Password', $content);
+                $mailer->send($emailMessage);
+            } catch (\Exception $e) {
+                // Log l'erreur mais ne pas la dévoiler au client
+            }
         }
 
-        return $this->json(['message' => 'Email envoye si compte existe']);
+        // Toujours renvoyer un succès (pour ne pas dévoiler si l'email existe ou non aux hackers)
+        return $this->json(['message' => 'Si un compte existe, un email a été envoyé.']);
     }
 
-    #[Route('/reset-password', name: 'confirm', methods: ['POST'])]
-    public function reset(Request $request, EntityManagerInterface $em, UserPasswordHasherInterface $passwordHasher): JsonResponse
+    #[Route('/reset-password', name: 'api_reset_password', methods: ['POST'])]
+    public function resetPassword(Request $request, EntityManagerInterface $em, UserPasswordHasherInterface $hasher): JsonResponse
     {
         $data = json_decode($request->getContent(), true);
-        $token = $data['token'] ?? '';
-        $newPassword = $data['password'] ?? '';
+        $token = $data['token'] ?? null;
+        $password = $data['password'] ?? null;
 
-        if (!$token || !$newPassword) return $this->json(['message' => 'Manque token ou password'], 400);
-
-        $user = $em->getRepository(User::class)->findOneBy(['resetToken' => $token]);
-
-        if (!$user) return $this->json(['message' => 'Token invalide'], 400);
-
-        if ($user->getResetTokenExpiresAt() < new \DateTimeImmutable()) {
-            return $this->json(['message' => 'Token expire'], 400);
+        if (!$token || !$password) {
+            return $this->json(['message' => 'Données invalides'], 400);
         }
 
-        $hashedPassword = $passwordHasher->hashPassword($user, $newPassword);
+        // Chercher l'utilisateur avec ce token
+        $user = $em->getRepository(User::class)->findOneBy(['resetToken' => $token]);
+
+        if (!$user) {
+            return $this->json(['message' => 'Lien invalide ou expiré'], 400);
+        }
+
+        // Vérifier que le token n'a pas expiré
+        if ($user->getResetTokenExpiresAt() && $user->getResetTokenExpiresAt() < new \DateTimeImmutable()) {
+            $user->setResetToken(null);
+            $user->setResetTokenExpiresAt(null);
+            $em->flush();
+            return $this->json(['message' => 'Ce lien a expiré. Veuillez refaire une demande.'], 400);
+        }
+
+        // Hasher et sauvegarder le nouveau mot de passe
+        $hashedPassword = $hasher->hashPassword($user, $password);
         $user->setPassword($hashedPassword);
         $user->setResetToken(null);
         $user->setResetTokenExpiresAt(null);
         $em->flush();
 
-        return $this->json(['message' => 'Succes mot de passe change']);
+        return $this->json(['message' => 'Mot de passe modifié avec succès']);
     }
 }

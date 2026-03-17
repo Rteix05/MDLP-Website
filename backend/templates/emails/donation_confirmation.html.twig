@@ -1,0 +1,29 @@
+{% extends 'emails/base.html.twig' %}
+
+{% block title %}Confirmation de don{% endblock %}
+
+{% block header %}Merci pour votre don !{% endblock %}
+
+{% block content %}
+    <p>Bonjour {{ userName }},</p>
+    
+    <p>Nous avons bien reçu votre don et nous vous en remercions chaleureusement. Votre générosité contribue directement à la mission de l'église.</p>
+
+    <div class="info-box">
+        <p><strong>Récapitulatif</strong></p>
+        <p>Montant : <strong>{{ amount }} €</strong></p>
+        <p>Date : {{ date }}</p>
+        <p>Référence : {{ transactionId }}</p>
+        <p>Numéro de reçu : {{ receiptNumber }}</p>
+    </div>
+
+    <p>Votre reçu fiscal est joint à cet email en pièce jointe au format PDF. Conservez-le précieusement pour votre déclaration fiscale.</p>
+
+    <div style="text-align: center;">
+        <a href="{{ dashboardUrl }}" class="email-button">Voir mon historique de dons</a>
+    </div>
+
+    <p style="margin-top: 20px;">Si vous avez des questions, n'hésitez pas à nous contacter.</p>
+
+    <p>Que Dieu vous bénisse,<br>L'équipe MDLP</p>
+{% endblock %}

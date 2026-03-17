@@ -3,6 +3,7 @@
 namespace App\Controller;
 
 use App\Entity\User;
+use App\Service\AuditLogger;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -11,14 +12,19 @@ use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
 #[Route('/api/admin/users', name: 'admin_users_')]
-#[IsGranted('ROLE_ADMIN')] // Sécurité : Seul l'admin accède ici
+#[IsGranted('ROLE_ADMIN')]
 class AdminUserController extends AbstractController
 {
+    public function __construct(private readonly AuditLogger $audit) {}
     // 1. Lister tous les utilisateurs
     #[Route('', name: 'list', methods: ['GET'])]
-    public function listUsers(EntityManagerInterface $em): JsonResponse
+    public function listUsers(EntityManagerInterface $em, Request $request): JsonResponse
     {
-        $users = $em->getRepository(User::class)->findAll();
+        $page = max(1, (int)$request->query->get('page', 1));
+        $limit = min(100, max(1, (int)$request->query->get('limit', 50)));
+        $offset = ($page - 1) * $limit;
+
+        $users = $em->getRepository(User::class)->findBy([], ['id' => 'DESC'], $limit, $offset);
         $data = [];
 
         foreach ($users as $user) {
@@ -45,7 +51,10 @@ class AdminUserController extends AbstractController
 
         $em->remove($user);
         $em->flush();
-
+        $this->audit->log('USER_DELETED', [
+            'deleted_user_id' => $user->getId(),
+            'deleted_email' => $user->getEmail(),
+        ]);
         return $this->json(['message' => 'Utilisateur supprimé']);
     }
 
@@ -64,7 +73,11 @@ class AdminUserController extends AbstractController
         }
 
         $em->flush();
-
+        $this->audit->log('USER_ROLE_CHANGED', [
+            'target_user_id' => $user->getId(),
+            'target_email' => $user->getEmail(),
+            'new_roles' => $user->getRoles(),
+        ]);
         return $this->json(['message' => 'Rôles mis à jour', 'roles' => $user->getRoles()]);
     }
 }

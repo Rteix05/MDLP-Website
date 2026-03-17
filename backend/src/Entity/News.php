@@ -5,6 +5,7 @@ namespace App\Entity;
 use App\Repository\NewsRepository;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
+use Symfony\Component\Validator\Constraints as Assert;
 
 #[ORM\Entity(repositoryClass: NewsRepository::class)]
 class News
@@ -15,9 +16,12 @@ class News
     private ?int $id = null;
 
     #[ORM\Column(length: 255)]
+    #[Assert\NotBlank]
+    #[Assert\Length(max: 255)]
     private ?string $title = null;
 
     #[ORM\Column(type: Types::TEXT)]
+    #[Assert\NotBlank]
     private ?string $content = null;
 
     #[ORM\Column(length: 255, nullable: true)]

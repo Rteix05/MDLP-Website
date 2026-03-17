@@ -4,6 +4,7 @@ namespace App\Entity;
 
 use App\Repository\PaymentRepository;
 use Doctrine\ORM\Mapping as ORM;
+use Symfony\Component\Validator\Constraints as Assert;
 
 #[ORM\Entity(repositoryClass: PaymentRepository::class)]
 class Payment
@@ -14,12 +15,17 @@ class Payment
     private ?int $id = null;
 
     #[ORM\Column]
+    #[Assert\NotNull]
+    #[Assert\Positive]
     private ?float $amount = null;
 
     #[ORM\Column]
+    #[Assert\NotNull]
     private ?\DateTimeImmutable $date = null;
 
     #[ORM\Column(length: 50)]
+    #[Assert\NotBlank]
+    #[Assert\Choice(choices: ['PENDING', 'COMPLETED', 'FAILED'])]
     private ?string $status = null;
 
     #[ORM\Column(length: 255, nullable: true)]

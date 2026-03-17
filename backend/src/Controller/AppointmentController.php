@@ -3,6 +3,7 @@
 namespace App\Controller;
 
 use App\Entity\Appointment;
+use App\Entity\User;
 use App\Service\EmailService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -22,7 +23,7 @@ class AppointmentController extends AbstractController
 
         try {
             $user = $this->getUser();
-            if (!$user) {
+            if (!$user instanceof User) {
                 return $this->json(['message' => 'Vous devez être connecté'], 401);
             }
             
@@ -34,21 +35,12 @@ class AppointmentController extends AbstractController
 
             $appointment = new Appointment();
             
-            // --- CORRECTION : ON FORCE L'ASSIGNATION ---
             $motif = $data['subject'] ?? 'Entretien Pastoral';
-            
-            // On remplit 'reason' directement. 
-            // Si PHP te dit "Method not found", c'est que tu as raté l'Étape 1 !
             $appointment->setReason($motif);
-            
-            // Si ton entité a aussi 'subject', on le met aussi, sinon tu peux supprimer cette ligne
-            if (method_exists($appointment, 'setSubject')) {
-                 $appointment->setSubject($motif);
-            }
-            // ------------------------------------------
 
             $appointment->setPastor($data['pastor'] ?? 'Non spécifié'); 
             $appointment->setMessage($data['message'] ?? '');
+            $appointment->setMeetingType($data['meetingType'] ?? 'presentiel');
             $appointment->setStatus('PENDING');
             $appointment->setUser($user);
             $appointment->setDate(new \DateTimeImmutable($data['date']));
@@ -60,8 +52,18 @@ class AppointmentController extends AbstractController
 
             // ENVOI EMAIL
             try {
-                $emailContent = "<h1>Nouveau RDV</h1><p>Motif : {$motif}<br>Date : {$data['date']}</p>";
-                $emailService->sendEmail($user->getEmail(), 'Confirmation de RDV', $emailContent);
+                $emailService->sendTemplatedEmail(
+                    $user->getEmail(),
+                    'Confirmation de rendez-vous',
+                    'emails/appointment_confirmation.html.twig',
+                    [
+                        'firstname' => $user->getFirstname(),
+                        'lastname' => $user->getLastname(),
+                        'motif' => $motif,
+                        'date' => $data['date'],
+                        'hour' => $data['hour'] ?? null
+                    ]
+                );
             } catch (\Exception $mailError) {
                 error_log("⚠️ Erreur mail : " . $mailError->getMessage());
             }
@@ -74,65 +76,42 @@ class AppointmentController extends AbstractController
         }
     }
 
-    // 2. Voir MES rendez-vous
+    // 2. Créneaux confirmés (public, pour bloquer dans le calendrier)
+    #[Route('/appointments/blocked-slots', name: 'blocked_slots', methods: ['GET'])]
+    public function blockedSlots(EntityManagerInterface $em): JsonResponse
+    {
+        $appointments = $em->getRepository(Appointment::class)->findBy(['status' => 'CONFIRMED']);
+        $slots = [];
+        foreach ($appointments as $rdv) {
+            $slots[] = $rdv->getDate()->format('Y-m-d H:i');
+        }
+        return $this->json($slots);
+    }
+
+    // 3. Voir MES rendez-vous
     #[Route('/my-appointments', name: 'my_appointments', methods: ['GET'])]
     public function myAppointments(): JsonResponse
     {
         $user = $this->getUser();
-        if (!$user) return $this->json(['message' => 'Non autorisé'], 401);
+        if (!$user instanceof User) return $this->json(['message' => 'Non autorisé'], 401);
 
         $appointments = $user->getAppointments();
         $data = [];
         foreach ($appointments as $rdv) {
             $data[] = [
                 'id' => $rdv->getId(),
-                'subject' => $rdv->getReason(), // On utilise getReason() maintenant
-                'date' => $rdv->getDate()->format('Y-m-d H:i'),
+                'subject' => $rdv->getReason(),
+                'date' => $rdv->getDate()->format('Y-m-d\TH:i:sP'),
                 'status' => $rdv->getStatus(),
                 'message' => $rdv->getMessage(),
                 'pastor' => $rdv->getPastor(),
+                'meetingType' => $rdv->getMeetingType(),
             ];
         }
         return $this->json($data);
     }
 
-    // 3. (ADMIN) Voir TOUTES les demandes
-    #[Route('/admin/appointments', name: 'admin_all_appointments', methods: ['GET'])]
-    #[IsGranted('ROLE_ADMIN')]
-    public function getAllAppointments(EntityManagerInterface $em): JsonResponse
-    {
-        $appointments = $em->getRepository(Appointment::class)->findBy([], ['date' => 'DESC']);
-        $data = [];
-        
-        foreach ($appointments as $rdv) {
-            $user = $rdv->getUser();
-            $data[] = [
-                'id' => $rdv->getId(),
-                'subject' => $rdv->getReason(), // Ici aussi
-                'date' => $rdv->getDate()->format('Y-m-d H:i'),
-                'status' => $rdv->getStatus(),
-                'message' => $rdv->getMessage(),
-                'pastor' => $rdv->getPastor(),
-                'user' => $user ? ['email' => $user->getEmail(), 'firstname' => $user->getFirstname(), 'lastname' => $user->getLastname()] : null
-            ];
-        }
-        return $this->json($data);
-    }
-
-    // 4. (ADMIN) Changer statut
-    #[Route('/admin/appointments/{id}/status', name: 'admin_update_status', methods: ['PATCH'])]
-    #[IsGranted('ROLE_ADMIN')]
-    public function updateStatus(Appointment $appointment, Request $request, EntityManagerInterface $em): JsonResponse
-    {
-        $data = json_decode($request->getContent(), true);
-        if (empty($data['status'])) return $this->json(['message' => 'Statut manquant'], 400);
-
-        $appointment->setStatus($data['status']);
-        $em->flush();
-        return $this->json(['message' => 'Statut mis à jour']);
-    }
-
-    // 5. Supprimer
+    // 3. Supprimer
     #[Route('/appointments/{id}', name: 'delete_appointment', methods: ['DELETE'])]
     public function delete(Appointment $appointment, EntityManagerInterface $em): JsonResponse
     {

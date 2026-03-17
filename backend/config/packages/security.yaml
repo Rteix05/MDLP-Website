@@ -42,10 +42,15 @@ security:
         - { path: ^/api/register, roles: PUBLIC_ACCESS }
         - { path: ^/api/login, roles: PUBLIC_ACCESS }
         - { path: ^/api/events, roles: PUBLIC_ACCESS }
-        - { path: ^/api/payment, roles: PUBLIC_ACCESS }
+        - { path: ^/api/contact, roles: PUBLIC_ACCESS }
+        - { path: ^/api/payment/stripe-webhook, roles: PUBLIC_ACCESS }
+        - { path: ^/api/payment/stripe-session, roles: PUBLIC_ACCESS }
+        - { path: ^/api/payment/by-session, methods: [GET], roles: PUBLIC_ACCESS }
         
         # 👇 NOUVELLE LIGNE : On autorise la lecture (GET) des news à tout le monde
         - { path: ^/api/news, methods: [GET], roles: PUBLIC_ACCESS }
+        - { path: ^/api/courses, methods: [GET], roles: PUBLIC_ACCESS }
+        - { path: ^/api/appointments/blocked-slots, methods: [GET], roles: PUBLIC_ACCESS }
 
         # 👇 Cette ligne bloque tout ce qui n'est pas autorisé au-dessus
         - { path: ^/api,       roles: IS_AUTHENTICATED_FULLY }

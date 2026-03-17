@@ -5,6 +5,7 @@ namespace App\Entity;
 use App\Repository\AppointmentRepository;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
+use Symfony\Component\Validator\Constraints as Assert;
 
 #[ORM\Entity(repositoryClass: AppointmentRepository::class)]
 class Appointment
@@ -14,42 +15,37 @@ class Appointment
     #[ORM\Column]
     private ?int $id = null;
 
-    #[ORM\Column(length: 255)]
-    private ?string $subject = null;
-
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $message = null;
 
     #[ORM\Column]
+    #[Assert\NotNull]
     private ?\DateTimeImmutable $date = null;
 
     #[ORM\Column(length: 20)]
+    #[Assert\NotBlank]
+    #[Assert\Choice(choices: ['PENDING', 'CONFIRMED', 'CANCELLED'])]
     private ?string $status = null;
 
     #[ORM\ManyToOne(inversedBy: 'appointments')]
     private ?User $user = null;
 
     #[ORM\Column(length: 255)]
+    #[Assert\NotBlank]
+    #[Assert\Length(max: 255)]
     private ?string $pastor = null;
 
     #[ORM\Column(type: Types::TEXT)]
+    #[Assert\NotBlank]
     private ?string $reason = null;
+
+    #[ORM\Column(length: 20, options: ['default' => 'presentiel'])]
+    #[Assert\Choice(choices: ['presentiel', 'telephonique'])]
+    private ?string $meetingType = 'presentiel';
 
     public function getId(): ?int
     {
         return $this->id;
-    }
-
-    public function getSubject(): ?string
-    {
-        return $this->subject;
-    }
-
-    public function setSubject(string $subject): static
-    {
-        $this->subject = $subject;
-
-        return $this;
     }
 
     public function getMessage(): ?string
@@ -120,6 +116,18 @@ class Appointment
     public function setReason(string $reason): static
     {
         $this->reason = $reason;
+
+        return $this;
+    }
+
+    public function getMeetingType(): ?string
+    {
+        return $this->meetingType;
+    }
+
+    public function setMeetingType(string $meetingType): static
+    {
+        $this->meetingType = $meetingType;
 
         return $this;
     }

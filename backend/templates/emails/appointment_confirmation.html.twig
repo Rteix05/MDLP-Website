@@ -1,0 +1,25 @@
+{% extends 'emails/base.html.twig' %}
+
+{% block title %}Confirmation de rendez-vous{% endblock %}
+
+{% block header %}Confirmation de rendez-vous{% endblock %}
+
+{% block content %}
+    <p>Bonjour {{ firstname }} {{ lastname }},</p>
+    
+    <p>Votre rendez-vous a bien été enregistré !</p>
+    
+    <div class="info-box">
+        <p><strong>Motif :</strong> {{ motif }}</p>
+        <p><strong>Date :</strong> {{ date }}</p>
+        {% if hour %}
+            <p><strong>Heure :</strong> {{ hour }}</p>
+        {% endif %}
+    </div>
+    
+    <p>Vous recevrez une confirmation supplémentaire une fois que votre rendez-vous aura été validé par notre équipe.</p>
+    
+    <p>Si vous avez des questions, n'hésitez pas à nous contacter.</p>
+    
+    <p>Cordialement,<br>L'équipe MDLP</p>
+{% endblock %}

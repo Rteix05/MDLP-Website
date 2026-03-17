@@ -14,9 +14,13 @@ class EventController extends AbstractController
 {
     // 1. Récupérer les événements
     #[Route('/events', name: 'get_events', methods: ['GET'])]
-    public function getEvents(EntityManagerInterface $em): JsonResponse
+    public function getEvents(EntityManagerInterface $em, Request $request): JsonResponse
     {
-        $events = $em->getRepository(Event::class)->findAll();
+        $page = max(1, (int)$request->query->get('page', 1));
+        $limit = min(100, max(1, (int)$request->query->get('limit', 50)));
+        $offset = ($page - 1) * $limit;
+
+        $events = $em->getRepository(Event::class)->findBy([], ['date' => 'DESC'], $limit, $offset);
         $data = [];
         
         foreach ($events as $event) {

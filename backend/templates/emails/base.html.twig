@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}MDLP{% endblock %}</title>
+    <style>
+        /* ======================== 
+           RESET & GLOBALS
+        ======================== */
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background-color: #f9fafb; /* Gris très clair pour faire ressortir la carte blanche */
+            color: #111827; /* Presque noir */
+            -webkit-font-smoothing: antialiased;
+        }
+        
+        /* ======================== 
+           CONTAINER 
+        ======================== */
+        .email-container {
+            max-width: 600px;
+            margin: 40px auto;
+            background-color: #ffffff;
+            border: 1px solid #e5e7eb; /* Bordure fine grise (pas d'ombre) */
+            border-radius: 0px; /* Bords stricts, pas arrondis */
+            overflow: hidden;
+        }
+        
+        /* ======================== 
+           HEADER (Dark Brutalist)
+        ======================== */
+        .email-header {
+            background-color: #0a0a0a; /* Noir profond */
+            color: #ffffff;
+            padding: 40px 20px;
+            text-align: center;
+        }
+        
+        .email-header h1 {
+            margin: 0;
+            font-size: 28px;
+            font-weight: 900;
+            letter-spacing: -1px; /* Tracking-tighter */
+            text-transform: uppercase;
+        }
+        
+        /* ======================== 
+           BODY
+        ======================== */
+        .email-body {
+            padding: 40px;
+            line-height: 1.8;
+            color: #4b5563; /* Gris foncé pour le texte de lecture */
+        }
+        
+        .email-body p {
+            margin: 0 0 20px 0;
+            font-size: 15px;
+        }
+
+        .email-body h2 {
+            color: #111827;
+            font-size: 20px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-top: 0;
+            margin-bottom: 20px;
+        }
+        
+        /* ======================== 
+           BUTTONS (Austin Stone style)
+        ======================== */
+        .email-button {
+            display: inline-block;
+            padding: 16px 32px;
+            margin: 20px 0;
+            background-color: #0a0a0a;
+            color: #ffffff !important;
+            text-decoration: none;
+            font-size: 12px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 2px; /* Espacement large type "Luxe" */
+            border: 2px solid #0a0a0a;
+            transition: all 0.3s ease;
+        }
+        
+        .email-button:hover {
+            background-color: #ffffff;
+            color: #0a0a0a !important;
+        }
+        
+        /* ======================== 
+           INFO BOX (Rendez-vous)
+        ======================== */
+        .info-box {
+            background-color: #f9fafb;
+            border-left: 4px solid #0a0a0a; /* Ligne noire à gauche */
+            padding: 20px;
+            margin: 30px 0;
+        }
+        
+        .info-box p {
+            margin: 8px 0;
+            font-size: 14px;
+        }
+        
+        .info-box strong {
+            color: #111827;
+            font-weight: 800;
+            text-transform: uppercase;
+            font-size: 12px;
+            letter-spacing: 1px;
+            display: inline-block;
+            width: 100px; /* Aligne proprement les labels */
+        }
+        
+        /* ======================== 
+           FOOTER
+        ======================== */
+        .email-footer {
+            background-color: #ffffff;
+            padding: 30px 40px;
+            text-align: center;
+            font-size: 11px;
+            font-weight: 600;
+            color: #9ca3af;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            border-top: 1px solid #f3f4f6;
+        }
+        
+        .email-footer p {
+            margin: 5px 0;
+        }
+        
+        /* ======================== 
+           RESPONSIVE
+        ======================== */
+        @media only screen and (max-width: 600px) {
+            .email-container {
+                margin: 0;
+                border: none;
+                border-top: 10px solid #0a0a0a; /* Juste une barre noire en haut sur mobile */
+            }
+            
+            .email-body {
+                padding: 30px 20px;
+            }
+
+            .email-footer {
+                padding: 30px 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="email-container">
+        
+        <div class="email-header">
+            <h1>{% block header %}MDLP.{% endblock %}</h1>
+        </div>
+        
+        <div class="email-body">
+            {% block content %}{% endblock %}
+        </div>
+        
+        <div class="email-footer">
+            {% block footer %}
+                <p>&copy; {{ "now"|date("Y") }} MDLP - Montagne de la Prière.</p>
+                <p style="margin-top: 10px; font-size: 10px; color: #d1d5db;">Cet email a été envoyé automatiquement, merci de ne pas y répondre.</p>
+            {% endblock %}
+        </div>
+        
+    </div>
+</body>
+</html>

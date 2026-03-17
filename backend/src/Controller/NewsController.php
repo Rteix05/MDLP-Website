@@ -15,12 +15,17 @@ class NewsController extends AbstractController
 {
     // 1. Lire toutes les news (Public)
     #[Route('/news', name: 'list', methods: ['GET'])]
-    public function list(EntityManagerInterface $em): JsonResponse
+    public function list(EntityManagerInterface $em, Request $request): JsonResponse
     {
-        // On récupère les news publiées, triées par date (plus récentes en premier)
+        $page = max(1, (int)$request->query->get('page', 1));
+        $limit = min(100, max(1, (int)$request->query->get('limit', 50)));
+        $offset = ($page - 1) * $limit;
+
         $newsList = $em->getRepository(News::class)->findBy(
             ['isPublished' => true], 
-            ['createdAt' => 'DESC']
+            ['createdAt' => 'DESC'],
+            $limit,
+            $offset
         );
 
         $data = [];
@@ -30,14 +35,27 @@ class NewsController extends AbstractController
                 'title' => $news->getTitle(),
                 'content' => $news->getContent(),
                 'imageUrl' => $news->getImageUrl(),
-                'date' => $news->getCreatedAt()->format('d/m/Y'),
+                'date' => $news->getCreatedAt()->format('Y-m-d\TH:i:sP'),
             ];
         }
 
         return $this->json($data);
     }
 
-    // 2. (ADMIN) Ajouter une news
+    // 2. Lire une news par ID (Public)
+    #[Route('/news/{id}', name: 'get_one', methods: ['GET'])]
+    public function getOne(News $news): JsonResponse
+    {
+        return $this->json([
+            'id' => $news->getId(),
+            'title' => $news->getTitle(),
+            'content' => $news->getContent(),
+            'imageUrl' => $news->getImageUrl(),
+            'date' => $news->getCreatedAt()->format('Y-m-d H:i'),
+        ]);
+    }
+
+    // 3. (ADMIN) Ajouter une news
     #[Route('/admin/news', name: 'create', methods: ['POST'])]
     #[IsGranted('ROLE_ADMIN')]
     public function create(Request $request, EntityManagerInterface $em): JsonResponse

@@ -3,13 +3,19 @@
 namespace App\Controller;
 
 use App\Entity\Payment;
+use App\Entity\User;
 use App\Repository\PaymentRepository;
+use App\Service\InvoicePdfService;
 use Doctrine\ORM\EntityManagerInterface;
 use Stripe\Stripe;
 use Stripe\Checkout\Session;
+use Stripe\Webhook;
+use Symfony\Bridge\Twig\Mime\TemplatedEmail;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\Mailer\MailerInterface;
 use Symfony\Component\Routing\Attribute\Route;
 
 #[Route('/api/payment', name: 'api_payment_')]
@@ -25,6 +31,15 @@ class PaymentController extends AbstractController
         // On initialise Stripe avec la clé secrète du .env
         Stripe::setApiKey($_ENV['STRIPE_SECRET_KEY']);
 
+        // Récupérer l'ID utilisateur si connecté
+        $user = $this->getUser();
+        $metadata = [];
+        if ($user) {
+            $metadata['user_id'] = $user->getId();
+        }
+
+        $frontendUrl = $_ENV['FRONTEND_URL'] ?? 'http://localhost:3000';
+
         try {
             $session = Session::create([
                 'payment_method_types' => ['card'],
@@ -39,8 +54,9 @@ class PaymentController extends AbstractController
                     'quantity' => 1,
                 ]],
                 'mode' => 'payment',
-                'success_url' => 'http://localhost:3000/don/merci',
-                'cancel_url' => 'http://localhost:3000/don',
+                'metadata' => $metadata,
+                'success_url' => $frontendUrl . '/don/merci?session_id={CHECKOUT_SESSION_ID}',
+                'cancel_url' => $frontendUrl . '/don',
             ]);
 
             return $this->json(['url' => $session->url]);
@@ -50,26 +66,148 @@ class PaymentController extends AbstractController
         }
     }
 
-    // --- 2. PAYPAL : ENREGISTRER LE PAIEMENT ---
+    // --- 2. STRIPE WEBHOOK : ENREGISTRER LE PAIEMENT APRÈS SUCCÈS ---
+    #[Route('/stripe-webhook', name: 'stripe_webhook', methods: ['POST'])]
+    public function stripeWebhook(Request $request, EntityManagerInterface $em, MailerInterface $mailer, InvoicePdfService $pdfService): Response
+    {
+        Stripe::setApiKey($_ENV['STRIPE_SECRET_KEY']);
+
+        $payload = $request->getContent();
+        $sigHeader = $request->headers->get('Stripe-Signature');
+        $endpointSecret = $_ENV['STRIPE_WEBHOOK_SECRET'] ?? null;
+
+        if (!$endpointSecret) {
+            return new Response('Webhook secret not configured', 500);
+        }
+
+        try {
+            $event = Webhook::constructEvent($payload, $sigHeader, $endpointSecret);
+            $eventType = $event->type;
+            $sessionData = $event->data->object;
+        } catch (\Exception $e) {
+            return new Response('Invalid signature: ' . $e->getMessage(), 400);
+        }
+
+        if ($eventType === 'checkout.session.completed') {
+            // Accéder aux données de la session (peut être un objet Stripe ou un array)
+            if (is_array($sessionData)) {
+                $amountTotal = ($sessionData['amount_total'] ?? 0) / 100;
+                $stripeSessionId = $sessionData['id'] ?? null;
+                $meta = $sessionData['metadata'] ?? [];
+            } else {
+                $amountTotal = ($sessionData->amount_total ?? 0) / 100;
+                $stripeSessionId = $sessionData->id ?? null;
+                $meta = $sessionData->metadata ?? [];
+            }
+            $meta = is_array($meta) ? $meta : (method_exists($meta, 'toArray') ? $meta->toArray() : (array) $meta);
+            $userId = $meta['user_id'] ?? null;
+
+            // Vérifier qu'on n'a pas déjà enregistré ce paiement
+            $existing = $em->getRepository(Payment::class)->findOneBy(['transactionId' => $stripeSessionId]);
+            if (!$existing && $amountTotal > 0) {
+                $payment = new Payment();
+                $payment->setAmount($amountTotal);
+                $payment->setTransactionId($stripeSessionId);
+                $payment->setStatus('COMPLETED');
+                $payment->setDate(new \DateTimeImmutable());
+
+                $user = null;
+                if ($userId) {
+                    $user = $em->getRepository(User::class)->find($userId);
+                    if ($user) {
+                        $payment->setUser($user);
+                    }
+                }
+
+                $em->persist($payment);
+                $em->flush();
+
+                // Envoyer l'email de confirmation avec le PDF en pièce jointe
+                if ($user) {
+                    try {
+                        $pdfContent = $pdfService->generatePdfContent($payment);
+                        $receiptNumber = $pdfService->getReceiptNumber($payment);
+                        $frontendUrl = $_ENV['FRONTEND_URL'] ?? 'http://localhost:3000';
+
+                        $email = (new TemplatedEmail())
+                            ->from('contact@mdlp.fr')
+                            ->to($user->getEmail())
+                            ->subject('Confirmation de don - ' . $receiptNumber . ' - MDLP')
+                            ->htmlTemplate('emails/donation_confirmation.html.twig')
+                            ->context([
+                                'userName' => $user->getFirstname(),
+                                'amount' => number_format($payment->getAmount(), 2, ',', ' '),
+                                'date' => $payment->getDate()->format('d/m/Y'),
+                                'transactionId' => $payment->getTransactionId(),
+                                'receiptNumber' => $receiptNumber,
+                                'dashboardUrl' => $frontendUrl . '/dashboard',
+                            ])
+                            ->attach($pdfContent, $receiptNumber . '.pdf', 'application/pdf');
+
+                        $mailer->send($email);
+                    } catch (\Exception $e) {
+                        // Log l'erreur mais ne pas bloquer le webhook
+                    }
+                }
+            }
+        }
+
+        return new Response('OK', 200);
+    }
+
+    // --- 3. RÉCUPÉRER LE PAYMENT ID PAR SESSION STRIPE ---
+    #[Route('/by-session', name: 'payment_by_session', methods: ['GET'])]
+    public function getPaymentBySession(Request $request, EntityManagerInterface $em): JsonResponse
+    {
+        $sessionId = $request->query->get('session_id');
+        if (!$sessionId) {
+            return $this->json(['error' => 'session_id manquant'], 400);
+        }
+
+        $payment = $em->getRepository(Payment::class)->findOneBy(['transactionId' => $sessionId]);
+        if (!$payment) {
+            return $this->json(['error' => 'Paiement non trouvé'], 404);
+        }
+
+        return $this->json([
+            'id' => $payment->getId(),
+            'amount' => $payment->getAmount(),
+        ]);
+    }
+
+    // --- 4. PAYPAL : ENREGISTRER LE PAIEMENT ---
     #[Route('/record', name: 'record_payment', methods: ['POST'])]
     public function recordPayment(Request $request, EntityManagerInterface $em): JsonResponse
     {
+        // Authentification obligatoire
+        $user = $this->getUser();
+        if (!$user) {
+            return $this->json(['message' => 'Authentification requise'], 401);
+        }
+
         $data = json_decode($request->getContent(), true);
 
         if (empty($data['amount']) || empty($data['transactionId'])) {
             return $this->json(['message' => 'Données manquantes'], 400);
         }
 
+        $amount = (float)$data['amount'];
+        if ($amount <= 0 || $amount > 50000) {
+            return $this->json(['message' => 'Montant invalide'], 400);
+        }
+
+        // Vérifier que ce transactionId n'existe pas déjà (anti-replay)
+        $existing = $em->getRepository(Payment::class)->findOneBy(['transactionId' => $data['transactionId']]);
+        if ($existing) {
+            return $this->json(['message' => 'Ce paiement a déjà été enregistré'], 409);
+        }
+
         $payment = new Payment();
-        $payment->setAmount((float)$data['amount']);
+        $payment->setAmount($amount);
         $payment->setTransactionId($data['transactionId']);
         $payment->setStatus('COMPLETED');
         $payment->setDate(new \DateTimeImmutable());
-
-        // Si l'utilisateur est connecté, on lie le paiement à son compte
-        if ($this->getUser()) {
-            $payment->setUser($this->getUser());
-        }
+        $payment->setUser($user);
 
         $em->persist($payment);
         $em->flush();
@@ -77,7 +215,7 @@ class PaymentController extends AbstractController
         return $this->json(['message' => 'Paiement enregistré avec succès !'], 201);
     }
 
-    // --- 3. DASHBOARD : TOTAL DES DONS (Widget) ---
+    // --- 5. DASHBOARD : TOTAL DES DONS (Widget) ---
     #[Route('/my-total', name: 'my_total', methods: ['GET'])]
     public function myTotal(PaymentRepository $repo): JsonResponse
     {
@@ -99,7 +237,7 @@ class PaymentController extends AbstractController
         return $this->json(['total' => (float)$total]);
     }
 
-    // --- 4. DASHBOARD : LISTE DES DONS (Historique) ---
+    // --- 6. DASHBOARD : LISTE DES DONS (Historique) ---
     // Cette méthode sert à afficher le tableau "Historique" sur le frontend
     #[Route('/my-payments', name: 'my_payments', methods: ['GET'])]
     public function myPayments(PaymentRepository $repo): JsonResponse
@@ -128,5 +266,145 @@ class PaymentController extends AbstractController
         }
 
         return $this->json($data);
+    }
+
+    // --- 7. ADMIN : LISTE DE TOUS LES PAIEMENTS ---
+    #[Route('/admin/all', name: 'admin_all_payments', methods: ['GET'])]
+    public function adminAllPayments(PaymentRepository $repo, Request $request, EntityManagerInterface $em): JsonResponse
+    {
+        $this->denyAccessUnlessGranted('ROLE_ADMIN');
+
+        $page = max(1, (int)$request->query->get('page', 1));
+        $limit = min(100, max(1, (int)$request->query->get('limit', 50)));
+        $offset = ($page - 1) * $limit;
+        $month = $request->query->get('month'); // 1-12
+        $year = $request->query->get('year');   // ex: 2026
+
+        $qb = $em->createQueryBuilder()
+            ->select('p')
+            ->from(Payment::class, 'p')
+            ->where('p.status = :status')
+            ->setParameter('status', 'COMPLETED')
+            ->orderBy('p.date', 'DESC');
+
+        $countQb = $em->createQueryBuilder()
+            ->select('COUNT(p.id)')
+            ->from(Payment::class, 'p')
+            ->where('p.status = :status')
+            ->setParameter('status', 'COMPLETED');
+
+        $statsQb = $em->createQueryBuilder()
+            ->select('SUM(p.amount) as totalAmount')
+            ->from(Payment::class, 'p')
+            ->where('p.status = :status')
+            ->setParameter('status', 'COMPLETED');
+
+        if ($year && $month) {
+            $start = new \DateTimeImmutable("$year-$month-01");
+            $end = $start->modify('first day of next month');
+            foreach ([$qb, $countQb, $statsQb] as $builder) {
+                $builder->andWhere('p.date >= :filterStart AND p.date < :filterEnd')
+                    ->setParameter('filterStart', $start)
+                    ->setParameter('filterEnd', $end);
+            }
+        } elseif ($year) {
+            $start = new \DateTimeImmutable("$year-01-01");
+            $end = $start->modify('+1 year');
+            foreach ([$qb, $countQb, $statsQb] as $builder) {
+                $builder->andWhere('p.date >= :filterStart AND p.date < :filterEnd')
+                    ->setParameter('filterStart', $start)
+                    ->setParameter('filterEnd', $end);
+            }
+        } elseif ($month) {
+            // Mois sans année = mois de l'année courante
+            $currentYear = (int)date('Y');
+            $start = new \DateTimeImmutable("$currentYear-$month-01");
+            $end = $start->modify('first day of next month');
+            foreach ([$qb, $countQb, $statsQb] as $builder) {
+                $builder->andWhere('p.date >= :filterStart AND p.date < :filterEnd')
+                    ->setParameter('filterStart', $start)
+                    ->setParameter('filterEnd', $end);
+            }
+        }
+
+        $total = (int)$countQb->getQuery()->getSingleScalarResult();
+        $filteredTotal = (float)($statsQb->getQuery()->getSingleScalarResult() ?? 0);
+
+        $payments = $qb->setFirstResult($offset)->setMaxResults($limit)->getQuery()->getResult();
+
+        // Stats par période (sur tous les paiements, sans filtre mois/année)
+        $now = new \DateTimeImmutable();
+
+        $weekStart = $now->modify('monday this week')->setTime(0, 0);
+        $weekTotal = (float)($em->createQueryBuilder()
+            ->select('SUM(p.amount)')
+            ->from(Payment::class, 'p')
+            ->where('p.status = :s')->setParameter('s', 'COMPLETED')
+            ->andWhere('p.date >= :ws')->setParameter('ws', $weekStart)
+            ->getQuery()->getSingleScalarResult() ?? 0);
+        $weekCount = (int)($em->createQueryBuilder()
+            ->select('COUNT(p.id)')
+            ->from(Payment::class, 'p')
+            ->where('p.status = :s')->setParameter('s', 'COMPLETED')
+            ->andWhere('p.date >= :ws')->setParameter('ws', $weekStart)
+            ->getQuery()->getSingleScalarResult());
+
+        $monthStart = $now->modify('first day of this month')->setTime(0, 0);
+        $monthTotal = (float)($em->createQueryBuilder()
+            ->select('SUM(p.amount)')
+            ->from(Payment::class, 'p')
+            ->where('p.status = :s')->setParameter('s', 'COMPLETED')
+            ->andWhere('p.date >= :ms')->setParameter('ms', $monthStart)
+            ->getQuery()->getSingleScalarResult() ?? 0);
+        $monthCount = (int)($em->createQueryBuilder()
+            ->select('COUNT(p.id)')
+            ->from(Payment::class, 'p')
+            ->where('p.status = :s')->setParameter('s', 'COMPLETED')
+            ->andWhere('p.date >= :ms')->setParameter('ms', $monthStart)
+            ->getQuery()->getSingleScalarResult());
+
+        $yearStart = $now->modify('first day of january this year')->setTime(0, 0);
+        $yearTotal = (float)($em->createQueryBuilder()
+            ->select('SUM(p.amount)')
+            ->from(Payment::class, 'p')
+            ->where('p.status = :s')->setParameter('s', 'COMPLETED')
+            ->andWhere('p.date >= :ys')->setParameter('ys', $yearStart)
+            ->getQuery()->getSingleScalarResult() ?? 0);
+        $yearCount = (int)($em->createQueryBuilder()
+            ->select('COUNT(p.id)')
+            ->from(Payment::class, 'p')
+            ->where('p.status = :s')->setParameter('s', 'COMPLETED')
+            ->andWhere('p.date >= :ys')->setParameter('ys', $yearStart)
+            ->getQuery()->getSingleScalarResult());
+
+        $data = [];
+        foreach ($payments as $p) {
+            $user = $p->getUser();
+            $data[] = [
+                'id' => $p->getId(),
+                'amount' => $p->getAmount(),
+                'date' => $p->getDate()->format('c'),
+                'transactionId' => $p->getTransactionId(),
+                'user' => $user ? [
+                    'id' => $user->getId(),
+                    'firstname' => $user->getFirstname(),
+                    'lastname' => $user->getLastname(),
+                    'email' => $user->getEmail(),
+                ] : null,
+            ];
+        }
+
+        return $this->json([
+            'payments' => $data,
+            'total' => $total,
+            'filteredRevenue' => $filteredTotal,
+            'page' => $page,
+            'limit' => $limit,
+            'stats' => [
+                'week' => ['total' => $weekTotal, 'count' => $weekCount, 'avg' => $weekCount > 0 ? round($weekTotal / $weekCount, 2) : 0],
+                'month' => ['total' => $monthTotal, 'count' => $monthCount, 'avg' => $monthCount > 0 ? round($monthTotal / $monthCount, 2) : 0],
+                'year' => ['total' => $yearTotal, 'count' => $yearCount, 'avg' => $yearCount > 0 ? round($yearTotal / $yearCount, 2) : 0],
+            ],
+        ]);
     }
 }

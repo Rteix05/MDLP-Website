@@ -1,0 +1,55 @@
+{% extends 'emails/base.html.twig' %}
+
+{% block title %}Mise à jour de votre rendez-vous{% endblock %}
+
+{% block content %}
+    <p style="font-size: 16px; margin-bottom: 8px;">Bonjour <strong>{{ userName }}</strong>,</p>
+
+    <p style="font-size: 15px; color: #374151; line-height: 1.7;">
+        Votre demande de rendez-vous a été <strong>{{ statusLabel }}</strong> par l'équipe MDLP.
+    </p>
+
+    <!-- Récapitulatif -->
+    <table style="width: 100%; border-collapse: collapse; margin: 24px 0; font-size: 14px;">
+        <tr>
+            <td style="padding: 12px 16px; background: #f9fafb; border: 1px solid #e5e7eb; font-weight: bold; width: 140px;">Motif</td>
+            <td style="padding: 12px 16px; border: 1px solid #e5e7eb;">{{ subject }}</td>
+        </tr>
+        <tr>
+            <td style="padding: 12px 16px; background: #f9fafb; border: 1px solid #e5e7eb; font-weight: bold;">Date</td>
+            <td style="padding: 12px 16px; border: 1px solid #e5e7eb;">{{ date }}</td>
+        </tr>
+        {% if pastor %}
+        <tr>
+            <td style="padding: 12px 16px; background: #f9fafb; border: 1px solid #e5e7eb; font-weight: bold;">Avec</td>
+            <td style="padding: 12px 16px; border: 1px solid #e5e7eb;">{{ pastor }}</td>
+        </tr>
+        {% endif %}
+        <tr>
+            <td style="padding: 12px 16px; background: #f9fafb; border: 1px solid #e5e7eb; font-weight: bold;">Statut</td>
+            <td style="padding: 12px 16px; border: 1px solid #e5e7eb;">
+                {% if status == 'CONFIRMED' %}
+                    <span style="color: #059669; font-weight: bold;">✅ Confirmé</span>
+                {% else %}
+                    <span style="color: #dc2626; font-weight: bold;">❌ Refusé</span>
+                {% endif %}
+            </td>
+        </tr>
+    </table>
+
+    {% if status == 'CONFIRMED' %}
+        <p style="font-size: 14px; color: #374151; line-height: 1.7;">
+            Merci de vous présenter à l'heure indiquée. En cas d'empêchement, connectez-vous à votre espace pour gérer vos rendez-vous.
+        </p>
+    {% else %}
+        <p style="font-size: 14px; color: #374151; line-height: 1.7;">
+            Si vous souhaitez prendre un nouveau rendez-vous, vous pouvez le faire depuis votre espace personnel.
+        </p>
+    {% endif %}
+
+    <div style="text-align: center; margin: 32px 0 16px;">
+        <a href="{{ dashboardUrl }}" style="display: inline-block; background-color: #0a0a0a; color: #ffffff; padding: 14px 32px; text-decoration: none; font-weight: bold; font-size: 13px; letter-spacing: 1px; text-transform: uppercase;">
+            Mon espace
+        </a>
+    </div>
+{% endblock %}
