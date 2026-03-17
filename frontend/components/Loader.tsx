@@ -11,7 +11,7 @@ export default function Loader() {
       {/* Conteneur du spinner */}
       <div className="relative">
         
-        {/* Cercle arrière (gris clair immobile) */}
+        {/* Cercle arrière (gris clair immobile MAZZA ) */}
         <div className="w-16 h-16 border-4 border-gray-200 rounded-full"></div>
         
         {/* Cercle avant (noir qui tourne) */}
