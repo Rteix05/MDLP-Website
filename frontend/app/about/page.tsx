@@ -178,7 +178,7 @@ export default function AboutPage() {
           <div className="mb-20 text-center">
             <h2 className="text-5xl md:text-7xl font-black tracking-tighter uppercase mb-6">Le Couple Pastoral.</h2>
             <p className="text-gray-500 text-lg max-w-2xl font-medium mx-auto">
-              Rencontrez les hommes et les femmes qui servent, dirigent et prennent soin de la communauté de MDLP au quotidien.
+              Rencontrez le couple qui servent, dirigent et prennent soin de la communauté de MDLP au quotidien.
             </p>
           </div>
 
