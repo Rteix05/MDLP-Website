@@ -1,20 +1,20 @@
 nelmio_cors:
     defaults:
         origin_regex: false
-        allow_origin: ['http://localhost:3000', 'http://127.0.0.1:3000', '%env(FRONTEND_URL)%', 'https://mdlp-website.vercel.app']
+        allow_origin: ['http://localhost:3000', 'http://127.0.0.1:3000', '%env(FRONTEND_URL)%', 'https://www.samuelpanzutv.com', 'https://mdlp-website.vercel.app']
         allow_methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS']
         allow_headers: ['Content-Type', 'Authorization']
         expose_headers: ['Link']
         max_age: 3600
     paths:
         '^/api/admin':
-            allow_origin: ['http://localhost:3000', 'http://127.0.0.1:3000', '%env(FRONTEND_URL)%', 'https://mdlp-website.vercel.app']
+            allow_origin: ['http://localhost:3000', 'http://127.0.0.1:3000', '%env(FRONTEND_URL)%', 'https://www.samuelpanzutv.com', 'https://mdlp-website.vercel.app']
             allow_methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS']
             allow_headers: ['Content-Type', 'Authorization']
         '^/api':
-            allow_origin: ['http://localhost:3000', 'http://127.0.0.1:3000', '%env(FRONTEND_URL)%', 'https://mdlp-website.vercel.app']
+            allow_origin: ['http://localhost:3000', 'http://127.0.0.1:3000', '%env(FRONTEND_URL)%', 'https://www.samuelpanzutv.com', 'https://mdlp-website.vercel.app']
             allow_methods: ['GET', 'POST', 'OPTIONS']
             allow_headers: ['Content-Type', 'Authorization']
         '^/':
-            allow_origin: ['http://localhost:3000', 'http://127.0.0.1:3000', '%env(FRONTEND_URL)%', 'https://mdlp-website.vercel.app']
+            allow_origin: ['http://localhost:3000', 'http://127.0.0.1:3000', '%env(FRONTEND_URL)%', 'https://www.samuelpanzutv.com', 'https://mdlp-website.vercel.app']
             allow_methods: ['GET', 'OPTIONS']
