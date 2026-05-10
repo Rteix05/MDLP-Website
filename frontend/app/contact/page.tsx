@@ -100,8 +100,8 @@ export default function ContactPage() {
                 </div>
                 <div>
                   <h4 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Adresse</h4>
-                  <p className="text-xl font-black text-gray-900 uppercase tracking-tight">5 Allée Bienvenue</p>
-                  <p className="text-gray-500 font-medium">93130 Noisy-Le-Grand, France</p>
+                  <p className="text-xl font-black text-gray-900 uppercase tracking-tight">2 Allée Bienvenue</p>
+                  <p className="text-gray-500 font-medium">93130 Noisy-Le-Grand, France (Tout les Dimanches).</p>
                 </div>
               </div>
 
@@ -112,8 +112,8 @@ export default function ContactPage() {
                 </div>
                 <div>
                   <h4 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Secrétariat</h4>
-                  <p className="text-xl font-black text-gray-900 uppercase tracking-tight">01 43 00 00 00</p>
-                  <p className="text-gray-500 font-medium">Du Mardi au Vendredi (10h - 17h)</p>
+                  <p className="text-xl font-black text-gray-900 uppercase tracking-tight">07 49 93 95 20</p>
+                  <p className="text-gray-500 font-medium">Tout les jours de la semaine. (10h - 21h)</p>
                 </div>
               </div>
 
@@ -124,7 +124,7 @@ export default function ContactPage() {
                 </div>
                 <div>
                   <h4 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Email</h4>
-                  <p className="text-xl font-black text-gray-900 uppercase tracking-tight">contact@mdlp.fr</p>
+                  <p className="text-xl font-black text-gray-900 uppercase tracking-tight">contact.lamontagnedelapriere@gmail.com</p>
                   <p className="text-gray-500 font-medium">Nous répondons sous 48h.</p>
                 </div>
               </div>

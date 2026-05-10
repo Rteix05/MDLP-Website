@@ -6,6 +6,14 @@
 parameters:
     app.mail_from: '%env(MAIL_FROM)%'
     app.contact_email: '%env(CONTACT_EMAIL)%'
+    frontend_url: '%env(FRONTEND_URL)%'
+    stripe_secret_key: '%env(STRIPE_SECRET_KEY)%'
+    stripe_webhook_secret: '%env(STRIPE_WEBHOOK_SECRET)%'
+    paypal_client_id: '%env(PAYPAL_CLIENT_ID)%'
+    paypal_client_secret: '%env(PAYPAL_CLIENT_SECRET)%'
+    paypal_mode: '%env(default:sandbox:PAYPAL_MODE)%'
+
+
 
 services:
     # default configuration for services in *this* file
@@ -24,6 +32,23 @@ services:
 
     # add more service definitions when explicit configuration is needed
     # please note that last definitions always *replace* previous ones
+    App\Controller\PaymentController:
+        arguments:
+            $frontendUrl: '%frontend_url%'
+            $stripeSecretKey: '%stripe_secret_key%'
+            $stripeWebhookSecret: '%stripe_webhook_secret%'
+            $paypalClientId: '%paypal_client_id%'
+            $paypalClientSecret: '%paypal_client_secret%'
+            $paypalMode: '%paypal_mode%'
+
+    App\Controller\AdminAppointmentController:
+        arguments:
+            $audit: '@App\Service\AuditLogger'
+            $frontendUrl: '%frontend_url%'
+
+    App\Controller\ResetPasswordController:
+        arguments:
+            $frontendUrl: '%frontend_url%'
     App\Service\EmailService:
         arguments:
             $fromEmail: '%app.mail_from%'

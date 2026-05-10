@@ -141,7 +141,19 @@ export default function ProfilePage() {
         }
     };
 
-    const handleLogout = () => {
+    const handleLogout = async () => {
+        const token = Cookies.get('token');
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
+        if (token) {
+            try {
+                await fetch(`${apiUrl}/api/logout`, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+            } catch (e) {
+                // ignore erreur réseau
+            }
+        }
         Cookies.remove('token');
         router.push('/');
     };

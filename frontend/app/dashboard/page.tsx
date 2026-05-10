@@ -64,82 +64,79 @@ export default function DashboardPage() {
     // --- CHARGEMENT DES DONNÉES ---
     useEffect(() => {
         const token = Cookies.get('token');
-
         if (!token) {
             router.push('/login');
             return;
         }
-
-        fetch(`${apiUrl}/api/me`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-        })
-        .then(res => {
-            if (res.status === 401) throw new Error('Unauthorized');
-            if (!res.ok) throw new Error('Erreur récupération user');
-            return res.json();
-        })
-        .then(userData => {
-            setUser(userData);
-            
-            if (userData.roles.includes('ROLE_ADMIN')) {
-                fetch(`${apiUrl}/api/admin/stats`, {
+        async function loadDashboard() {
+            try {
+                const userRes = await fetch(`${apiUrl}/api/me`, {
                     headers: { 'Authorization': `Bearer ${token}` }
-                })
-                .then(res => res.json())
-                .then(statsData => {
-                    setAdminStats({
-                        userCount: statsData.userCount,
-                        totalRevenue: statsData.totalRevenue
+                });
+                if (userRes.status === 401) throw new Error('Unauthorized');
+                if (!userRes.ok) throw new Error('Erreur récupération user');
+                const userData = await userRes.json();
+                setUser(userData);
+                if (userData.roles.includes('ROLE_ADMIN')) {
+                    const statsRes = await fetch(`${apiUrl}/api/admin/stats`, {
+                        headers: { 'Authorization': `Bearer ${token}` }
                     });
-                })
-                .catch(err => console.error("Erreur stats admin", err));
-            } 
-            else {
-                fetch(`${apiUrl}/api/payment/my-total`, {
+                    if (statsRes.ok) {
+                        const statsData = await statsRes.json();
+                        setAdminStats({ userCount: statsData.userCount, totalRevenue: statsData.totalRevenue });
+                    }
+                } else {
+                    const totalRes = await fetch(`${apiUrl}/api/payment/my-total`, {
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    });
+                    if (totalRes.ok) {
+                        const data = await totalRes.json();
+                        setUserTotalDonation(data.total);
+                    }
+                    const paymentsRes = await fetch(`${apiUrl}/api/payment/my-payments`, {
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    });
+                    if (paymentsRes.ok) {
+                        const data = await paymentsRes.json();
+                        setDonations(data);
+                    }
+                }
+                const endpoint = userData.roles.includes('ROLE_ADMIN') ? `${apiUrl}/api/admin/appointments` : `${apiUrl}/api/my-appointments`;
+                const appointmentsRes = await fetch(endpoint, {
                     headers: { 'Authorization': `Bearer ${token}` }
-                })
-                .then(res => res.json())
-                .then(data => setUserTotalDonation(data.total))
-                .catch(err => console.error("Erreur total user", err));
-
-                fetch(`${apiUrl}/api/payment/my-payments`, {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                })
-                .then(res => res.json())
-                .then(data => setDonations(data))
-                .catch(err => console.error("Erreur historique dons", err));
-            }
-
-            const endpoint = userData.roles.includes('ROLE_ADMIN') 
-                ? `${apiUrl}/api/admin/appointments`
-                : `${apiUrl}/api/my-appointments`;
-
-            return fetch(endpoint, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-        })
-        .then(res => {
-            if (!res || !res.ok) return []; 
-            return res.json();
-        })
-        .then(rdvData => {
-            if(Array.isArray(rdvData)) {
-                setAppointments(rdvData.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
-            }
-            setLoading(false);
-        })
-        .catch((error) => {
-            console.error("Erreur Dashboard:", error);
-            if (error.message === 'Unauthorized') {
-                Cookies.remove('token');
-                router.push('/login');
-            } else {
+                });
+                if (appointmentsRes.ok) {
+                    const rdvData = await appointmentsRes.json();
+                    if(Array.isArray(rdvData)) {
+                        setAppointments(rdvData.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
+                    }
+                }
                 setLoading(false);
+            } catch (error: any) {
+                console.error("Erreur Dashboard:", error);
+                if (error.message === 'Unauthorized') {
+                    Cookies.remove('token');
+                    router.push('/login');
+                } else {
+                    setLoading(false);
+                }
             }
-        });
+        }
+        loadDashboard();
     }, [router, apiUrl]);
 
-    const handleLogout = () => {
+    const handleLogout = async () => {
+        const token = Cookies.get('token');
+        if (token) {
+            try {
+                await fetch(`${apiUrl}/api/logout`, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+            } catch (e) {
+                // ignore erreur réseau
+            }
+        }
         Cookies.remove('token');
         router.push('/');
     };

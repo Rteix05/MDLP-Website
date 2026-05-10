@@ -37,18 +37,40 @@ class ContactController extends AbstractController
             'autre' => 'Autre',
         ];
 
-        $this->emailService->sendTemplatedEmail(
-            $this->contactEmail,
-            '[MDLP Contact] ' . ($subjectLabels[$subject] ?? $subject),
-            'emails/contact.html.twig',
-            [
-                'name' => $name,
-                'email' => $email,
-                'subject' => $subjectLabels[$subject] ?? $subject,
-                'message' => $message,
-            ]
-        );
+        try {
+            // Envoi à l'adresse de contact
+            $this->emailService->sendTemplatedEmail(
+                $this->contactEmail,
+                '[MDLP Contact] ' . ($subjectLabels[$subject] ?? $subject),
+                'emails/contact.html.twig',
+                [
+                    'name' => $name,
+                    'email' => $email,
+                    'subject' => $subjectLabels[$subject] ?? $subject,
+                    'message' => $message,
+                ]
+            );
 
-        return $this->json(['message' => 'Message envoyé avec succès.']);
+            // Envoi de la confirmation à l'expéditeur
+            $this->emailService->sendTemplatedEmail(
+                $email,
+                'Votre message a bien été reçu',
+                'emails/contact_confirmation.html.twig',
+                [
+                    'name' => $name,
+                    'subject' => $subjectLabels[$subject] ?? $subject,
+                    'message' => $message,
+                ]
+            );
+
+            return $this->json(['message' => 'Message envoyé avec succès.']);
+        } catch (\Throwable $e) {
+            // SI ÇA PLANTE, on attrape l'erreur et on la renvoie proprement en JSON
+            // Next.js affichera l'erreur au lieu de crasher avec "Unexpected token '<'" !
+            return $this->json([
+                'message' => 'Erreur lors de l\'envoi du message.',
+                'error_detail' => $e->getMessage()
+            ], 500);
+        }
     }
 }

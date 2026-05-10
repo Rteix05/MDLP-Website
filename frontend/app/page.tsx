@@ -14,7 +14,7 @@ const slides = [
     image: '/church1.jpg',
     subtitle: 'DIMANCHES À 10H00',
     title: 'VIVRE SA PRÉSENCE.',
-    link: '/visiter',
+    link: '/contact',
     btnText: 'Planifier une visite'
   },
   {

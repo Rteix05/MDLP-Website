@@ -9,10 +9,16 @@ use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
+use Psr\Log\LoggerInterface;
 
 #[Route('/api', name: 'api_news_')]
 class NewsController extends AbstractController
 {
+    private LoggerInterface $logger;
+    public function __construct(LoggerInterface $logger)
+    {
+        $this->logger = $logger;
+    }
     // 1. Lire toutes les news (Public)
     #[Route('/news', name: 'list', methods: ['GET'])]
     public function list(EntityManagerInterface $em, Request $request): JsonResponse

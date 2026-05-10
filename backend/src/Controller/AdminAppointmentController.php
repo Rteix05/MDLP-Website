@@ -6,6 +6,7 @@ use App\Entity\Appointment;
 use App\Repository\AppointmentRepository;
 use App\Service\AuditLogger;
 use App\Service\EmailService;
+use Psr\Log\LoggerInterface;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -17,7 +18,14 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
 #[IsGranted('ROLE_ADMIN', message: 'Acc\u00e8s r\u00e9serv\u00e9 aux administrateurs')]
 class AdminAppointmentController extends AbstractController
 {
-    public function __construct(private readonly AuditLogger $audit) {}
+    private AuditLogger $audit;
+    private string $frontendUrl;
+    private LoggerInterface $logger;
+    public function __construct(AuditLogger $audit, string $frontendUrl, LoggerInterface $logger) {
+        $this->audit = $audit;
+        $this->frontendUrl = $frontendUrl;
+        $this->logger = $logger;
+    }
     // 1. LISTE DE TOUS LES RDV (GET)
     #[Route('', name: 'list', methods: ['GET'])]
     public function index(AppointmentRepository $repo, Request $request): JsonResponse
@@ -89,12 +97,12 @@ class AdminAppointmentController extends AbstractController
                         'pastor' => $appointment->getPastor(),
                         'status' => $newStatus,
                         'statusLabel' => $newStatus === 'CONFIRMED' ? 'confirmée' : 'refusée',
-                        'dashboardUrl' => ($_ENV['FRONTEND_URL'] ?? 'http://localhost:3000') . '/dashboard',
+                        'dashboardUrl' => $this->frontendUrl . '/dashboard',
                     ]
                 );
             } catch (\Exception $e) {
                 // Log l'erreur mais ne bloque pas la réponse
-                error_log('Erreur envoi email RDV: ' . $e->getMessage());
+                $this->logger->error('Erreur envoi email RDV: ' . $e->getMessage(), ['exception' => $e]);
             }
         }
 

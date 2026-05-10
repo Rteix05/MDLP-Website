@@ -226,7 +226,7 @@ export default function AboutPage() {
           <h2 className="text-4xl md:text-6xl font-black mb-10 tracking-tighter uppercase leading-tight">
             PRÊT À NOUS RENDRE VISITE ?
           </h2>
-          <Link href="/visiter" className="inline-block bg-white text-black px-12 py-5 font-black uppercase tracking-widest text-xs hover:bg-gray-200 transition">
+          <Link href="/contact" className="inline-block bg-white text-black px-12 py-5 font-black uppercase tracking-widest text-xs hover:bg-gray-200 transition">
             Planifier ma visite
           </Link>
         </div>

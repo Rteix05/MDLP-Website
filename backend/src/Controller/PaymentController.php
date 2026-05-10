@@ -12,24 +12,51 @@ use Stripe\Checkout\Session;
 use Stripe\Webhook;
 use Symfony\Bridge\Twig\Mime\TemplatedEmail;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Psr\Log\LoggerInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Mailer\MailerInterface;
 use Symfony\Component\Routing\Attribute\Route;
+use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 #[Route('/api/payment', name: 'api_payment_')]
 class PaymentController extends AbstractController
 {
+    private string $frontendUrl;
+    private string $stripeSecretKey;
+    private string $stripeWebhookSecret;
+    private string $paypalClientId;
+    private string $paypalClientSecret;
+    private string $paypalApiBase;
+
+    public function __construct(
+        string $frontendUrl,
+        string $stripeSecretKey,
+        string $stripeWebhookSecret,
+        string $paypalClientId,
+        string $paypalClientSecret,
+        string $paypalMode,
+        private HttpClientInterface $httpClient,
+    ) {
+        $this->frontendUrl = $frontendUrl;
+        $this->stripeSecretKey = $stripeSecretKey;
+        $this->stripeWebhookSecret = $stripeWebhookSecret;
+        $this->paypalClientId = $paypalClientId;
+        $this->paypalClientSecret = $paypalClientSecret;
+        $this->paypalApiBase = $paypalMode === 'live'
+            ? 'https://api-m.paypal.com'
+            : 'https://api-m.sandbox.paypal.com';
+    }
     // --- 1. STRIPE : CRÉER UNE SESSION DE PAIEMENT ---
     #[Route('/stripe-session', name: 'create_stripe_session', methods: ['POST'])]
-    public function createStripeSession(Request $request): JsonResponse
+    public function createStripeSession(Request $request, LoggerInterface $logger): JsonResponse
     {
         $data = json_decode($request->getContent(), true);
         $amount = $data['amount'] ?? 10;
 
         // On initialise Stripe avec la clé secrète du .env
-        Stripe::setApiKey($_ENV['STRIPE_SECRET_KEY']);
+        Stripe::setApiKey($this->stripeSecretKey);
 
         // Récupérer l'ID utilisateur si connecté
         $user = $this->getUser();
@@ -38,7 +65,7 @@ class PaymentController extends AbstractController
             $metadata['user_id'] = $user->getId();
         }
 
-        $frontendUrl = $_ENV['FRONTEND_URL'] ?? 'http://localhost:3000';
+
 
         try {
             $session = Session::create([
@@ -55,26 +82,27 @@ class PaymentController extends AbstractController
                 ]],
                 'mode' => 'payment',
                 'metadata' => $metadata,
-                'success_url' => $frontendUrl . '/don/merci?session_id={CHECKOUT_SESSION_ID}',
-                'cancel_url' => $frontendUrl . '/don',
+                'success_url' => $this->frontendUrl . '/don/merci?session_id={CHECKOUT_SESSION_ID}',
+                'cancel_url' => $this->frontendUrl . '/don',
             ]);
 
             return $this->json(['url' => $session->url]);
 
         } catch (\Exception $e) {
-            return $this->json(['error' => $e->getMessage()], 500);
+            $logger->error('Erreur Stripe Session: ' . $e->getMessage(), ['exception' => $e]);
+            return $this->json(['error' => 'Erreur serveur, veuillez réessayer plus tard.'], 500);
         }
     }
 
     // --- 2. STRIPE WEBHOOK : ENREGISTRER LE PAIEMENT APRÈS SUCCÈS ---
     #[Route('/stripe-webhook', name: 'stripe_webhook', methods: ['POST'])]
-    public function stripeWebhook(Request $request, EntityManagerInterface $em, MailerInterface $mailer, InvoicePdfService $pdfService): Response
+    public function stripeWebhook(Request $request, EntityManagerInterface $em, MailerInterface $mailer, InvoicePdfService $pdfService, LoggerInterface $logger): Response
     {
-        Stripe::setApiKey($_ENV['STRIPE_SECRET_KEY']);
+        Stripe::setApiKey($this->stripeSecretKey);
 
         $payload = $request->getContent();
         $sigHeader = $request->headers->get('Stripe-Signature');
-        $endpointSecret = $_ENV['STRIPE_WEBHOOK_SECRET'] ?? null;
+        $endpointSecret = $this->stripeWebhookSecret;
 
         if (!$endpointSecret) {
             return new Response('Webhook secret not configured', 500);
@@ -85,7 +113,8 @@ class PaymentController extends AbstractController
             $eventType = $event->type;
             $sessionData = $event->data->object;
         } catch (\Exception $e) {
-            return new Response('Invalid signature: ' . $e->getMessage(), 400);
+            $logger->error('Erreur Stripe Webhook signature: ' . $e->getMessage(), ['exception' => $e]);
+            return new Response('Invalid signature', 400);
         }
 
         if ($eventType === 'checkout.session.completed') {
@@ -127,7 +156,7 @@ class PaymentController extends AbstractController
                     try {
                         $pdfContent = $pdfService->generatePdfContent($payment);
                         $receiptNumber = $pdfService->getReceiptNumber($payment);
-                        $frontendUrl = $_ENV['FRONTEND_URL'] ?? 'http://localhost:3000';
+                        $frontendUrl = $this->frontendUrl;
 
                         $email = (new TemplatedEmail())
                             ->from('contact@mdlp.fr')
@@ -146,7 +175,29 @@ class PaymentController extends AbstractController
 
                         $mailer->send($email);
                     } catch (\Exception $e) {
+                        $logger->error('Erreur envoi email confirmation don: ' . $e->getMessage(), ['exception' => $e]);
                         // Log l'erreur mais ne pas bloquer le webhook
+                    }
+                    
+                    // Envoyer un mail à l'admin pour notifier le don
+                    try {
+                        $adminEmail = $_ENV['CONTACT_EMAIL'] ?? 'contact@mdlp.fr';
+                        $adminMail = (new TemplatedEmail())
+                            ->from('contact@mdlp.fr')
+                            ->to($adminEmail)
+                            ->subject('Nouveau don effectué')
+                            ->htmlTemplate('emails/donation_admin_notification.html.twig')
+                            ->context([
+                                'userName' => $user->getFirstname(),
+                                'userEmail' => $user->getEmail(),
+                                'amount' => number_format($payment->getAmount(), 2, ',', ' '),
+                                'date' => $payment->getDate()->format('d/m/Y'),
+                                'transactionId' => $payment->getTransactionId(),
+                                'receiptNumber' => $receiptNumber,
+                            ]);
+                        $mailer->send($adminMail);
+                    } catch (\Exception $e) {
+                        $logger->error('Erreur envoi email admin don: ' . $e->getMessage(), ['exception' => $e]);
                     }
                 }
             }
@@ -159,16 +210,22 @@ class PaymentController extends AbstractController
     #[Route('/by-session', name: 'payment_by_session', methods: ['GET'])]
     public function getPaymentBySession(Request $request, EntityManagerInterface $em): JsonResponse
     {
+        $user = $this->getUser();
+        if (!$user) {
+            return $this->json(['error' => 'Authentification requise'], 401);
+        }
         $sessionId = $request->query->get('session_id');
         if (!$sessionId) {
             return $this->json(['error' => 'session_id manquant'], 400);
         }
-
         $payment = $em->getRepository(Payment::class)->findOneBy(['transactionId' => $sessionId]);
         if (!$payment) {
             return $this->json(['error' => 'Paiement non trouvé'], 404);
         }
-
+        // Vérifie que le paiement appartient à l'utilisateur ou admin
+        if ($payment->getUser() && $payment->getUser()->getId() !== $user->getId() && !$this->isGranted('ROLE_ADMIN')) {
+            return $this->json(['error' => 'Accès interdit'], 403);
+        }
         return $this->json([
             'id' => $payment->getId(),
             'amount' => $payment->getAmount(),
@@ -196,6 +253,12 @@ class PaymentController extends AbstractController
             return $this->json(['message' => 'Montant invalide'], 400);
         }
 
+        // Vérification serveur PayPal
+        $paypalVerification = $this->verifyPaypalTransaction($data['transactionId'], $amount);
+        if (!$paypalVerification['valid']) {
+            return $this->json(['message' => 'Transaction PayPal non valide'], 400);
+        }
+
         // Vérifier que ce transactionId n'existe pas déjà (anti-replay)
         $existing = $em->getRepository(Payment::class)->findOneBy(['transactionId' => $data['transactionId']]);
         if ($existing) {
@@ -213,6 +276,47 @@ class PaymentController extends AbstractController
         $em->flush();
 
         return $this->json(['message' => 'Paiement enregistré avec succès !'], 201);
+    }
+
+    // Vérification PayPal côté serveur via l'API Orders v2
+    private function verifyPaypalTransaction(string $transactionId, float $amount): array
+    {
+        try {
+            // 1. Obtenir un access token
+            $tokenResponse = $this->httpClient->request('POST', $this->paypalApiBase . '/v1/oauth2/token', [
+                'auth_basic' => [$this->paypalClientId, $this->paypalClientSecret],
+                'body' => 'grant_type=client_credentials',
+                'headers' => ['Content-Type' => 'application/x-www-form-urlencoded'],
+            ]);
+            $tokenData = $tokenResponse->toArray();
+            $accessToken = $tokenData['access_token'] ?? null;
+
+            if (!$accessToken) {
+                return ['valid' => false, 'reason' => 'Impossible d\'obtenir le token PayPal'];
+            }
+
+            // 2. Récupérer l'ordre PayPal
+            $orderResponse = $this->httpClient->request('GET', $this->paypalApiBase . '/v2/checkout/orders/' . $transactionId, [
+                'auth_bearer' => $accessToken,
+            ]);
+            $order = $orderResponse->toArray();
+
+            // 3. Vérifier le statut COMPLETED
+            if (($order['status'] ?? '') !== 'COMPLETED') {
+                return ['valid' => false, 'reason' => 'Statut PayPal: ' . ($order['status'] ?? 'inconnu')];
+            }
+
+            // 4. Vérifier le montant (tolérance de 0.01€ pour les arrondis)
+            $paidAmount = (float)($order['purchase_units'][0]['amount']['value'] ?? 0);
+            if (abs($paidAmount - $amount) > 0.01) {
+                return ['valid' => false, 'reason' => 'Montant PayPal ne correspond pas'];
+            }
+
+            return ['valid' => true];
+
+        } catch (\Exception $e) {
+            return ['valid' => false, 'reason' => 'Erreur vérification PayPal: ' . $e->getMessage()];
+        }
     }
 
     // --- 5. DASHBOARD : TOTAL DES DONS (Widget) ---

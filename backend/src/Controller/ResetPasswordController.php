@@ -12,10 +12,17 @@ use Symfony\Component\Mailer\MailerInterface;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 use Symfony\Component\RateLimiter\RateLimiterFactory;
 use Symfony\Component\Routing\Attribute\Route;
+use Psr\Log\LoggerInterface;
 
 #[Route('/api')]
 class ResetPasswordController extends AbstractController
 {
+    private string $frontendUrl;
+    private LoggerInterface $logger;
+    public function __construct(string $frontendUrl, LoggerInterface $logger) {
+        $this->frontendUrl = $frontendUrl;
+        $this->logger = $logger;
+    }
     #[Route('/forgot-password', name: 'api_forgot_password', methods: ['POST'])]
     public function forgotPassword(Request $request, EntityManagerInterface $em, MailerInterface $mailer, RateLimiterFactory $authForgotPasswordLimiter): JsonResponse
     {
@@ -41,8 +48,7 @@ class ResetPasswordController extends AbstractController
             $em->flush();
 
             // 2. Préparer le lien pour le frontend
-            $frontendUrl = $_ENV['FRONTEND_URL'] ?? 'http://127.0.0.1:3000'; // Lien vers ton Next.js
-            $resetLink = $frontendUrl . '/reset-password?token=' . $token;
+            $resetLink = $this->frontendUrl . '/reset-password?token=' . $token;
 
             // 3. Envoyer l'email avec ton super design Twig !
             try {
@@ -59,6 +65,7 @@ class ResetPasswordController extends AbstractController
                 $mailer->send($emailMessage);
             } catch (\Exception $e) {
                 // Log l'erreur mais ne pas la dévoiler au client
+                $this->logger->error('Erreur envoi email reset password: ' . $e->getMessage(), ['exception' => $e]);
             }
         }
 

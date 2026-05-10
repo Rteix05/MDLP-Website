@@ -12,10 +12,16 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\ResponseHeaderBag;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
+use Psr\Log\LoggerInterface;
 
 #[Route('/api', name: 'api_course_')]
 class CourseController extends AbstractController
 {
+    private LoggerInterface $logger;
+    public function __construct(LoggerInterface $logger)
+    {
+        $this->logger = $logger;
+    }
     private const UPLOAD_DIR = '/uploads/courses';
     private const ALLOWED_CATEGORIES = ['ecole-dimanche', 'cours-specifiques', 'messes-dimanche'];
 
@@ -60,12 +66,18 @@ class CourseController extends AbstractController
         $filePath = $this->getParameter('kernel.project_dir') . '/public' . self::UPLOAD_DIR . '/' . $course->getPdfFilename();
 
         if (!file_exists($filePath)) {
+            $this->logger->error('Fichier PDF introuvable pour le cours', ['courseId' => $course->getId(), 'filePath' => $filePath]);
             return $this->json(['error' => 'Fichier introuvable'], 404);
         }
 
-        $response = new BinaryFileResponse($filePath);
-        $response->setContentDisposition(ResponseHeaderBag::DISPOSITION_ATTACHMENT, $course->getPdfFilename());
-        return $response;
+        try {
+            $response = new BinaryFileResponse($filePath);
+            $response->setContentDisposition(ResponseHeaderBag::DISPOSITION_ATTACHMENT, $course->getPdfFilename());
+            return $response;
+        } catch (\Exception $e) {
+            $this->logger->error('Erreur lors du téléchargement du PDF', ['exception' => $e, 'courseId' => $course->getId()]);
+            return $this->json(['error' => 'Erreur lors du téléchargement du fichier'], 500);
+        }
     }
 
     // 3. (ADMIN) Liste complète (visibles + masqués)
@@ -124,13 +136,36 @@ class CourseController extends AbstractController
                 mkdir($uploadDir, 0755, true);
             }
 
-            $safeFilename = bin2hex(random_bytes(8)) . '_' . preg_replace('/[^a-zA-Z0-9._-]/', '_', $file->getClientOriginalName());
-            $file->move($uploadDir, $safeFilename);
-            $course->setPdfFilename($safeFilename);
+            try {
+                $safeFilename = bin2hex(random_bytes(8)) . '_' . preg_replace('/[^a-zA-Z0-9._-]/', '_', $file->getClientOriginalName());
+                $file->move($uploadDir, $safeFilename);
+                $course->setPdfFilename($safeFilename);
+            } catch (\Exception $e) {
+                $this->logger->error('Erreur lors de l\'upload du PDF', ['exception' => $e]);
+                return $this->json(['error' => 'Erreur lors de l\'upload du fichier'], 500);
+            }
         }
 
         $em->persist($course);
         $em->flush();
+
+        // Envoi d'un mail à l'admin pour notifier l'ajout d'un cours
+        try {
+            $adminEmail = $_ENV['CONTACT_EMAIL'] ?? 'contact@mdlp.fr';
+            $emailService = $this->container->get('App\\Service\\EmailService');
+            $emailService->sendTemplatedEmail(
+                $adminEmail,
+                'Nouveau cours ajouté',
+                'emails/course_admin_notification.html.twig',
+                [
+                    'title' => $course->getTitle(),
+                    'category' => $course->getCategory(),
+                    'date' => $course->getCreatedAt()->format('d/m/Y H:i'),
+                ]
+            );
+        } catch (\Exception $mailError) {
+            // Log l'erreur mais ne pas bloquer la réponse
+        }
 
         return $this->json(['message' => 'Cours ajouté avec succès', 'id' => $course->getId()], 201);
     }
@@ -161,12 +196,34 @@ class CourseController extends AbstractController
         if ($course->getPdfFilename()) {
             $filePath = $this->getParameter('kernel.project_dir') . '/public' . self::UPLOAD_DIR . '/' . $course->getPdfFilename();
             if (file_exists($filePath)) {
-                unlink($filePath);
+                try {
+                    unlink($filePath);
+                } catch (\Exception $e) {
+                    $this->logger->error('Erreur lors de la suppression du PDF', ['exception' => $e, 'filePath' => $filePath]);
+                }
             }
         }
 
         $em->remove($course);
         $em->flush();
+
+        // Envoi d'un mail à l'admin pour notifier la suppression d'un cours
+        try {
+            $adminEmail = $_ENV['CONTACT_EMAIL'] ?? 'contact@mdlp.fr';
+            $emailService = $this->container->get('App\\Service\\EmailService');
+            $emailService->sendTemplatedEmail(
+                $adminEmail,
+                'Cours supprimé',
+                'emails/course_admin_notification.html.twig',
+                [
+                    'title' => $course->getTitle(),
+                    'category' => $course->getCategory(),
+                    'date' => (new \DateTimeImmutable())->format('d/m/Y H:i'),
+                ]
+            );
+        } catch (\Exception $mailError) {
+            // Log l'erreur mais ne pas bloquer la réponse
+        }
 
         return $this->json(['message' => 'Cours supprimé']);
     }

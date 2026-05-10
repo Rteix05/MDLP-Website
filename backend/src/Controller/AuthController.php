@@ -73,6 +73,25 @@ class AuthController extends AbstractController
         $em->persist($user);
         $em->flush();
 
+        // Envoi d'un mail à l'admin pour notifier l'inscription
+        try {
+            $adminEmail = $_ENV['CONTACT_EMAIL'] ?? 'contact@mdlp.fr';
+            $emailService = $this->container->get('App\\Service\\EmailService');
+            $emailService->sendTemplatedEmail(
+                $adminEmail,
+                'Nouvelle inscription utilisateur',
+                'emails/registration_admin_notification.html.twig',
+                [
+                    'firstname' => $user->getFirstname(),
+                    'lastname' => $user->getLastname(),
+                    'userEmail' => $user->getEmail(),
+                    'date' => (new \DateTimeImmutable())->format('d/m/Y H:i')
+                ]
+            );
+        } catch (\Exception $mailError) {
+            // Log l'erreur mais ne pas bloquer la réponse
+        }
+
         return $this->json(['message' => 'Compte créé avec succès !'], 201);
     }
 

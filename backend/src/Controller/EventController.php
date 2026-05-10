@@ -5,6 +5,7 @@ namespace App\Controller;
 use App\Entity\Event;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Psr\Log\LoggerInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Attribute\Route;
@@ -40,7 +41,7 @@ class EventController extends AbstractController
 
     // 2. Créer un événement
     #[Route('/events', name: 'create_event', methods: ['POST'])]
-    public function createEvent(Request $request, EntityManagerInterface $em): JsonResponse
+    public function createEvent(Request $request, EntityManagerInterface $em, LoggerInterface $logger): JsonResponse
     {
         try {
             $data = json_decode($request->getContent(), true);
@@ -72,10 +73,9 @@ class EventController extends AbstractController
             return $this->json(['message' => 'Événement créé avec succès !'], 201);
 
         } catch (\Exception $e) {
-            // En cas de gros crash, on renvoie l'erreur précise au lieu de 500
+            $logger->error('Erreur création événement: ' . $e->getMessage(), ['exception' => $e]);
             return $this->json([
-                'error' => 'Erreur Serveur',
-                'details' => $e->getMessage()
+                'error' => 'Erreur serveur, veuillez réessayer plus tard.'
             ], 500);
         }
     }

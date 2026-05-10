@@ -50,7 +50,7 @@ class AppointmentController extends AbstractController
             
             error_log("✅ RDV enregistré avec succès");
 
-            // ENVOI EMAIL
+            // ENVOI EMAIL UTILISATEUR
             try {
                 $emailService->sendTemplatedEmail(
                     $user->getEmail(),
@@ -66,6 +66,26 @@ class AppointmentController extends AbstractController
                 );
             } catch (\Exception $mailError) {
                 error_log("⚠️ Erreur mail : " . $mailError->getMessage());
+            }
+
+            // ENVOI EMAIL ADMIN
+            try {
+                $adminEmail = $_ENV['CONTACT_EMAIL'] ?? 'contact@mdlp.fr';
+                $emailService->sendTemplatedEmail(
+                    $adminEmail,
+                    'Nouvelle demande de rendez-vous en attente',
+                    'emails/appointment_admin_notification.html.twig',
+                    [
+                        'firstname' => $user->getFirstname(),
+                        'lastname' => $user->getLastname(),
+                        'motif' => $motif,
+                        'date' => $data['date'],
+                        'hour' => $data['hour'] ?? null,
+                        'userEmail' => $user->getEmail()
+                    ]
+                );
+            } catch (\Exception $mailError) {
+                error_log("⚠️ Erreur mail admin : " . $mailError->getMessage());
             }
 
             return $this->json(['message' => 'Rendez-vous créé !'], 201);

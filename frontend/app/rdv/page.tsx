@@ -24,6 +24,15 @@ export default function AppointmentPage() {
     e.preventDefault();
     setLoading(true);
 
+    // Validation date future
+    const now = new Date();
+    const selectedDate = new Date(date);
+    if (!date || selectedDate <= now) {
+      alert('Veuillez choisir une date future pour le rendez-vous.');
+      setLoading(false);
+      return;
+    }
+
     const token = Cookies.get('token');
 
     try {
