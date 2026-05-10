@@ -131,6 +131,15 @@ class PaymentController extends AbstractController
             $meta = is_array($meta) ? $meta : (method_exists($meta, 'toArray') ? $meta->toArray() : (array) $meta);
             $userId = $meta['user_id'] ?? null;
 
+            // Récupérer l'email du client Stripe (pour les dons anonymes)
+            $customerEmail = null;
+            if (is_array($sessionData)) {
+                $customerDetails = $sessionData['customer_details'] ?? [];
+                $customerEmail = is_array($customerDetails) ? ($customerDetails['email'] ?? null) : ($customerDetails->email ?? null);
+            } else {
+                $customerEmail = $sessionData->customer_details->email ?? null;
+            }
+
             // Vérifier qu'on n'a pas déjà enregistré ce paiement
             $existing = $em->getRepository(Payment::class)->findOneBy(['transactionId' => $stripeSessionId]);
             if (!$existing && $amountTotal > 0) {
@@ -198,6 +207,52 @@ class PaymentController extends AbstractController
                         $mailer->send($adminMail);
                     } catch (\Exception $e) {
                         $logger->error('Erreur envoi email admin don: ' . $e->getMessage(), ['exception' => $e]);
+                    }
+                } elseif ($customerEmail) {
+                    // Don anonyme : envoyer confirmation à l'email Stripe
+                    try {
+                        $pdfContent = $pdfService->generatePdfContent($payment);
+                        $receiptNumber = $pdfService->getReceiptNumber($payment);
+
+                        $email = (new TemplatedEmail())
+                            ->from('contact@mdlp.fr')
+                            ->to($customerEmail)
+                            ->subject('Confirmation de don - ' . $receiptNumber . ' - MDLP')
+                            ->htmlTemplate('emails/donation_confirmation.html.twig')
+                            ->context([
+                                'userName' => 'Donateur',
+                                'amount' => number_format($payment->getAmount(), 2, ',', ' '),
+                                'date' => $payment->getDate()->format('d/m/Y'),
+                                'transactionId' => $payment->getTransactionId(),
+                                'receiptNumber' => $receiptNumber,
+                                'dashboardUrl' => $this->frontendUrl,
+                            ])
+                            ->attach($pdfContent, $receiptNumber . '.pdf', 'application/pdf');
+
+                        $mailer->send($email);
+                    } catch (\Exception $e) {
+                        $logger->error('Erreur envoi email confirmation don anonyme: ' . $e->getMessage(), ['exception' => $e]);
+                    }
+
+                    // Notifier l'admin
+                    try {
+                        $adminEmail = $_ENV['CONTACT_EMAIL'] ?? 'contact@mdlp.fr';
+                        $adminMail = (new TemplatedEmail())
+                            ->from('contact@mdlp.fr')
+                            ->to($adminEmail)
+                            ->subject('Nouveau don effectué (anonyme)')
+                            ->htmlTemplate('emails/donation_admin_notification.html.twig')
+                            ->context([
+                                'userName' => 'Donateur anonyme',
+                                'userEmail' => $customerEmail,
+                                'amount' => number_format($payment->getAmount(), 2, ',', ' '),
+                                'date' => $payment->getDate()->format('d/m/Y'),
+                                'transactionId' => $payment->getTransactionId(),
+                                'receiptNumber' => $pdfService->getReceiptNumber($payment),
+                            ]);
+                        $mailer->send($adminMail);
+                    } catch (\Exception $e) {
+                        $logger->error('Erreur envoi email admin don anonyme: ' . $e->getMessage(), ['exception' => $e]);
                     }
                 }
             }
