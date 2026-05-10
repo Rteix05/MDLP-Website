@@ -12,13 +12,13 @@ const team = [
     id: 1,
     name: 'Pasteur Samuel Panzu',
     role: 'Pasteur Principal',
-    image: '/086A9997.jpg'
+    image: '/086A9997_small.jpg'
   },
   {
     id: 2,
     name: 'Pastoresse Filomena Panzu',
     role: 'Pastoresse',
-    image: '/086A9088.jpg'
+    image: '/086A9088_small.jpg'
   }
 ];
 
