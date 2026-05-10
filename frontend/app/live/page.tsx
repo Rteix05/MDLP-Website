@@ -27,7 +27,7 @@ const platforms = [
     icon: Facebook,
     color: 'hover:border-blue-500',
     btnColor: 'group-hover:bg-blue-600',
-    link: 'https://facebook.com',
+    link: 'https://www.facebook.com/samuel.panzu.7',
     image: '/church4.jpg',
     tag: 'Communauté'
   }
