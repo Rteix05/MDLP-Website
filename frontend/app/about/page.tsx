@@ -183,7 +183,7 @@ export default function AboutPage() {
           </div>
 
           {/* Grille de l'équipe (Style "Portrait" très épuré) */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-16 max-w-2xl mx-auto">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-16 max-w-2xl mx-auto items-end">
             {team.map((member, index) => (
               <motion.div 
                 key={member.id}
@@ -191,18 +191,19 @@ export default function AboutPage() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: index * 0.1 }}
-                className="group cursor-pointer"
+                className="group cursor-pointer flex flex-col"
               >
-                {/* Ratio 3/4 typique des sites de mode/luxe */}
-                <div className="bg-gray-100 mb-6 overflow-hidden relative">
+                <div className="bg-gray-100 mb-6 overflow-hidden relative flex-1">
                   <img
                     src={member.image}
                     alt={member.name}
                     className="w-full h-auto object-contain grayscale group-hover:grayscale-0 transition-all duration-700"
                   />
                 </div>
-                <h3 className="text-xl font-black uppercase tracking-tight mb-1">{member.name}</h3>
-                <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">{member.role}</p>
+                <div className="text-center">
+                  <h3 className="text-xl font-black uppercase tracking-tight mb-1">{member.name}</h3>
+                  <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">{member.role}</p>
+                </div>
               </motion.div>
             ))}
           </div>
