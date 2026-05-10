@@ -6,31 +6,19 @@ import { motion } from 'framer-motion';
 import { Clock, MapPin, ArrowRight } from 'lucide-react';
 import Link from 'next/link';
 
-// --- DONNÉES DE L'ÉQUIPE ---
+// --- DONNÉES DU COUPLE PASTORAL ---
 const team = [
   {
     id: 1,
-    name: 'Pasteur Pierre',
+    name: 'Pasteur Samuel Panzu',
     role: 'Pasteur Principal',
-    image: '/person1.jpg'
+    image: '/086A9997.jpg'
   },
   {
     id: 2,
-    name: 'Jean Dupont',
-    role: 'Responsable Louange',
-    image: '/person2.jpg'
-  },
-  {
-    id: 3,
-    name: 'Marie Laurent',
-    role: 'Directrice MDLP Kids',
-    image: '/person3.jpg'
-  },
-  {
-    id: 4,
-    name: 'Sarah',
-    role: 'Responsable Jeunesse',
-    image: '/person4.jpg'
+    name: 'Pastoresse Filomena Panzu',
+    role: 'Pastoresse',
+    image: '/086A9088.jpg'
   }
 ];
 
@@ -188,7 +176,7 @@ export default function AboutPage() {
       <section className="py-32 bg-white">
         <div className="max-w-7xl mx-auto px-6">
           <div className="mb-20 text-center md:text-left">
-            <h2 className="text-5xl md:text-7xl font-black tracking-tighter uppercase mb-6">Notre Équipe.</h2>
+            <h2 className="text-5xl md:text-7xl font-black tracking-tighter uppercase mb-6">Le Couple Pastoral.</h2>
             <p className="text-gray-500 text-lg max-w-2xl font-medium">
               Rencontrez les hommes et les femmes qui servent, dirigent et prennent soin de la communauté de MDLP au quotidien.
             </p>
