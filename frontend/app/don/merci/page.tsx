@@ -4,7 +4,6 @@ import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { Check, ArrowRight, Home, Download } from 'lucide-react';
 import { useState, Suspense } from 'react';
-import Cookies from 'js-cookie';
 import Navbar from '@/components/Navbar';
 
 function MerciContent() {
@@ -18,32 +17,20 @@ function MerciContent() {
 
         try {
             const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
-            const token = Cookies.get('token');
 
-            // 1. Récupérer l'ID du paiement via le session_id Stripe
-            const res = await fetch(`${apiUrl}/api/payment/by-session?session_id=${sessionId}`, {
-                headers: token ? { 'Authorization': `Bearer ${token}` } : {},
-            });
-
-            if (!res.ok) throw new Error('Paiement non trouvé');
-            const data = await res.json();
-
-            // 2. Télécharger le PDF
-            const pdfRes = await fetch(`${apiUrl}/api/invoice/${data.id}`, {
-                headers: token ? { 'Authorization': `Bearer ${token}` } : {},
-            });
+            const pdfRes = await fetch(`${apiUrl}/api/invoice/by-session?session_id=${sessionId}`);
 
             if (!pdfRes.ok) throw new Error('Erreur lors du téléchargement');
             const blob = await pdfRes.blob();
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `recu_don_${data.id}.pdf`;
+            a.download = `recu_don.pdf`;
             a.click();
             window.URL.revokeObjectURL(url);
         } catch (err) {
             console.error(err);
-            alert("Le re\u00e7u n'est pas encore disponible. R\u00e9essayez dans quelques secondes.");
+            alert("Le reçu n'est pas encore disponible. Réessayez dans quelques secondes.");
         } finally {
             setLoading(false);
         }
