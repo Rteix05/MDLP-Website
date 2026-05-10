@@ -194,11 +194,12 @@ export default function AboutPage() {
                 className="group cursor-pointer"
               >
                 {/* Ratio 3/4 typique des sites de mode/luxe */}
-                <div className="aspect-[3/4] bg-gray-100 mb-6 overflow-hidden relative">
-                  <div 
-                    className="absolute inset-0 bg-cover bg-center grayscale group-hover:grayscale-0 group-hover:scale-105 transition-all duration-700"
-                    style={{ backgroundImage: `url('${member.image}')` }}
-                  ></div>
+                <div className="bg-gray-100 mb-6 overflow-hidden relative">
+                  <img
+                    src={member.image}
+                    alt={member.name}
+                    className="w-full h-auto object-contain grayscale group-hover:grayscale-0 transition-all duration-700"
+                  />
                 </div>
                 <h3 className="text-xl font-black uppercase tracking-tight mb-1">{member.name}</h3>
                 <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">{member.role}</p>
