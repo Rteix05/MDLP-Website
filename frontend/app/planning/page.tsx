@@ -247,7 +247,7 @@ export default function PlanningPage() {
                                         ${isSelected ? '!bg-black !text-white shadow-md scale-110' : ''}
                                         ${isToday && !isSelected ? 'text-black border-b-2 border-black' : ''}
                                         ${isNotAllowed && !isPast ? 'line-through text-gray-300' : ''}
-                                        ${isFullyBooked && !isPast && !isSunday ? 'bg-red-50 text-red-300' : ''}
+                                        ${isFullyBooked && !isPast && !isNotAllowed ? 'bg-red-50 text-red-300' : ''}
                                     `}
                                     title={isNotAllowed ? 'Disponible uniquement le Mardi et le Jeudi' : isFullyBooked ? 'Tous les créneaux sont pris' : ''}
                                 >
