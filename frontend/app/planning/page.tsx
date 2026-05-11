@@ -229,11 +229,12 @@ export default function PlanningPage() {
                         const isSelected = selectedFullDate?.toDateString() === thisDate.toDateString();
                         const isToday = thisDate.toDateString() === today.toDateString();
                         const isPast = thisDate < today;
-                        const isSunday = thisDate.getDay() === 0;
+                        const dayOfWeek = thisDate.getDay(); // 2=Mardi, 4=Jeudi
+                        const isNotAllowed = dayOfWeek !== 2 && dayOfWeek !== 4;
                         const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`;
                         const slotsForDay = blockedSlots.filter(s => s.startsWith(dateStr));
                         const isFullyBooked = slotsForDay.length >= timeSlots.length;
-                        const isDisabled = isPast || isSunday || isFullyBooked;
+                        const isDisabled = isPast || isNotAllowed || isFullyBooked;
 
                         return (
                             <div key={dayNum} className="flex justify-center items-center h-10 md:h-12 w-full">
@@ -245,10 +246,10 @@ export default function PlanningPage() {
                                         ${isDisabled ? 'text-gray-200 cursor-not-allowed' : 'hover:bg-gray-100 text-gray-700'}
                                         ${isSelected ? '!bg-black !text-white shadow-md scale-110' : ''}
                                         ${isToday && !isSelected ? 'text-black border-b-2 border-black' : ''}
-                                        ${isSunday && !isPast ? 'line-through text-gray-300' : ''}
+                                        ${isNotAllowed && !isPast ? 'line-through text-gray-300' : ''}
                                         ${isFullyBooked && !isPast && !isSunday ? 'bg-red-50 text-red-300' : ''}
                                     `}
-                                    title={isSunday ? 'Indisponible le dimanche' : isFullyBooked ? 'Tous les créneaux sont pris' : ''}
+                                    title={isNotAllowed ? 'Disponible uniquement le Mardi et le Jeudi' : isFullyBooked ? 'Tous les créneaux sont pris' : ''}
                                 >
                                     {dayNum}
                                 </button>
@@ -369,20 +370,15 @@ export default function PlanningPage() {
                             <h2 className="text-xs md:text-sm font-bold text-gray-900 uppercase tracking-widest mb-6 border-b border-gray-100 pb-4">Type de rendez-vous</h2>
                             
                             <div className="space-y-3 flex-grow">
-                                <div 
-                                    onClick={() => setMeetingType('presentiel')}
-                                    className={`cursor-pointer rounded-xl border-2 p-4 md:p-5 transition-all duration-200 flex items-center gap-4 ${meetingType === 'presentiel' ? 'border-black bg-gray-50' : 'border-gray-100 hover:border-black'}`}
-                                >
-                                    <div className="h-12 w-12 rounded-full bg-blue-50 flex items-center justify-center border border-blue-100">
-                                        <Building2 size={22} className="text-blue-600" />
+                                <div className="rounded-xl border-2 border-gray-100 p-4 md:p-5 flex items-center gap-4 opacity-50 cursor-not-allowed bg-gray-50">
+                                    <div className="h-12 w-12 rounded-full bg-gray-100 flex items-center justify-center border border-gray-200">
+                                        <Building2 size={22} className="text-gray-400" />
                                     </div>
                                     <div className="flex-grow">
-                                        <h3 className={`font-black text-sm uppercase tracking-wide ${meetingType === 'presentiel' ? 'text-black' : 'text-gray-800'}`}>Présentiel</h3>
-                                        <p className="text-[10px] md:text-xs text-gray-500 font-medium">Se rendre sur place à Noisy-Le-Grand</p>
+                                        <h3 className="font-black text-sm uppercase tracking-wide text-gray-400">Présentiel</h3>
+                                        <p className="text-[10px] md:text-xs text-gray-400 font-medium italic">Non disponible pour l'instant</p>
                                     </div>
-                                    <div className={`h-6 w-6 rounded-full border-2 flex items-center justify-center transition-colors ${meetingType === 'presentiel' ? 'border-black bg-black text-white' : 'border-gray-200'}`}>
-                                        {meetingType === 'presentiel' && <Check size={12} strokeWidth={4} />}
-                                    </div>
+                                    <div className="h-6 w-6 rounded-full border-2 border-gray-200"></div>
                                 </div>
 
                                 <div 
