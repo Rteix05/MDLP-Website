@@ -33,6 +33,18 @@ class AppointmentController extends AbstractController
                 return $this->json(['message' => 'Date manquante'], 400);
             }
 
+            $dateObj = new \DateTimeImmutable($data['date']);
+            $dayOfWeek = (int) $dateObj->format('N'); // 1=Lundi, 7=Dimanche
+            $hour = (int) $dateObj->format('H');
+            $minute = (int) $dateObj->format('i');
+
+            if ($dayOfWeek > 5) {
+                return $this->json(['message' => 'Les rendez-vous sont uniquement disponibles du Lundi au Vendredi.'], 400);
+            }
+            if ($hour < 14 || $hour >= 18 || ($hour === 17 && $minute > 30) || ($minute !== 0 && $minute !== 30)) {
+                return $this->json(['message' => 'Le créneau doit être entre 14h00 et 17h30, par tranche de 30 minutes.'], 400);
+            }
+
             $appointment = new Appointment();
             
             $motif = $data['subject'] ?? 'Entretien Pastoral';
