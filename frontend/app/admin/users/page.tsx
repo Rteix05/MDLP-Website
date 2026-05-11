@@ -12,6 +12,16 @@ export default function UserManagementPage() {
   const token = Cookies.get('token');
   const API = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
 
+  // Décoder le JWT pour récupérer l'email de l'admin connecté
+  const getCurrentUserEmail = (): string | null => {
+    if (!token) return null;
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      return payload.username || payload.email || null;
+    } catch { return null; }
+  };
+  const currentUserEmail = getCurrentUserEmail();
+
   // Charger les utilisateurs
   useEffect(() => {
     fetch(`${API}/api/admin/users`, {
@@ -37,15 +47,34 @@ export default function UserManagementPage() {
     setUsers(users.filter(u => u.id !== id));
   };
 
-  // Fonction Promouvoir
+  // Fonction Promouvoir / Rétrograder
   const handleToggleRole = async (id: number) => {
+    const target = users.find(u => u.id === id);
+    if (!target) return;
+
+    const targetIsAdmin = target.roles?.includes('ROLE_ADMIN');
+
+    // Bloquer la rétrogradation d'un autre admin
+    if (targetIsAdmin && target.email !== currentUserEmail) {
+      alert('Vous ne pouvez pas rétrograder un autre administrateur.');
+      return;
+    }
+
+    // Double confirmation pour la promotion
+    if (!targetIsAdmin) {
+      const first = confirm(`Promouvoir ${target.firstname} ${target.lastname} en Admin ?`);
+      if (!first) return;
+      const second = confirm(`⚠️ Confirmation finale : ${target.firstname} ${target.lastname} aura accès à TOUTES les données du site. Continuer ?`);
+      if (!second) return;
+    } else {
+      if (!confirm(`Rétrograder votre propre compte admin ?`)) return;
+    }
+
     const res = await fetch(`${API}/api/admin/users/${id}/role`, {
       method: 'PATCH',
       headers: { 'Authorization': `Bearer ${token}` }
     });
     const data = await res.json();
-    
-    // Mise à jour locale
     setUsers(users.map(u => u.id === id ? { ...u, roles: data.roles } : u));
   };
 
@@ -138,7 +167,13 @@ export default function UserManagementPage() {
                                                 {/* Bouton Rôle */}
                                                 <button 
                                                     onClick={() => handleToggleRole(user.id)}
-                                                    className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-[9px] font-bold uppercase tracking-wider transition bg-gray-50 text-gray-600 hover:bg-gray-200 hover:text-black border border-gray-100"
+                                                    disabled={isAdmin && user.email !== currentUserEmail}
+                                                    title={isAdmin && user.email !== currentUserEmail ? 'Impossible de rétrograder un autre admin' : ''}
+                                                    className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-[9px] font-bold uppercase tracking-wider transition border ${
+                                                      isAdmin && user.email !== currentUserEmail
+                                                        ? 'bg-gray-50 text-gray-300 border-gray-100 cursor-not-allowed'
+                                                        : 'bg-gray-50 text-gray-600 hover:bg-gray-200 hover:text-black border-gray-100'
+                                                    }`}
                                                 >
                                                     {isAdmin ? (
                                                         <><ArrowDown size={14} /> Rétrograder</>
