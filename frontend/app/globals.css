@@ -1,5 +1,15 @@
 @import "tailwindcss";
 
+* {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+input, textarea, [contenteditable] {
+  user-select: text;
+  -webkit-user-select: text;
+}
+
 :root {
   --background: #ffffff;
   --foreground: #171717;
