@@ -146,7 +146,7 @@ export default function PlanningPage() {
     }
   };
 
-  const timeSlots = ["09:00", "09:30", "10:00", "10:30", "11:00", "14:00", "14:30", "15:00", "15:30", "16:00", "16:30", "17:00"];
+  const timeSlots = ["14:00", "14:30", "15:00", "15:30", "16:00", "16:30", "17:00", "17:30"];
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col font-sans text-gray-900">
