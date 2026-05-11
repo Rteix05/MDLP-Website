@@ -16,9 +16,9 @@ export const metadata: Metadata = {
   title: "La Montagne de La Prière",
   description: "Site officiel de La Montagne de La Prière",
   icons: {
-    icon: '/favicon.jpg',
-    shortcut: '/favicon.jpg',
-    apple: '/favicon.jpg',
+    icon: '/favicon.ico',
+    shortcut: '/favicon.ico',
+    apple: '/favicon.ico',
   },
 };
 
