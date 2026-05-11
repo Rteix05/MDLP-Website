@@ -4,6 +4,7 @@ namespace App\Controller;
 
 use App\Entity\User;
 use App\Service\AuditLogger;
+use App\Service\EmailService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -15,7 +16,7 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
 #[IsGranted('ROLE_ADMIN')]
 class AdminUserController extends AbstractController
 {
-    public function __construct(private readonly AuditLogger $audit) {}
+    public function __construct(private readonly AuditLogger $audit, private readonly EmailService $emailService) {}
     // 1. Lister tous les utilisateurs
     #[Route('', name: 'list', methods: ['GET'])]
     public function listUsers(EntityManagerInterface $em, Request $request): JsonResponse
@@ -49,12 +50,26 @@ class AdminUserController extends AbstractController
             return $this->json(['message' => 'Impossible de se supprimer soi-même'], 400);
         }
 
+        $email = $user->getEmail();
+        $firstname = $user->getFirstname();
+
         $em->remove($user);
         $em->flush();
+
         $this->audit->log('USER_DELETED', [
             'deleted_user_id' => $user->getId(),
-            'deleted_email' => $user->getEmail(),
+            'deleted_email' => $email,
         ]);
+
+        try {
+            $this->emailService->sendTemplatedEmail(
+                $email,
+                'Votre compte MDLP a été supprimé',
+                'emails/account_deleted.html.twig',
+                ['firstname' => $firstname]
+            );
+        } catch (\Exception $e) {}
+
         return $this->json(['message' => 'Utilisateur supprimé']);
     }
 

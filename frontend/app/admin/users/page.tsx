@@ -37,7 +37,13 @@ export default function UserManagementPage() {
 
   // Fonction Bannir
   const handleDelete = async (id: number) => {
-    if (!confirm('Êtes-vous sûr de vouloir supprimer cet utilisateur ?')) return;
+    const target = users.find(u => u.id === id);
+    if (!target) return;
+
+    const first = confirm(`Supprimer le compte de ${target.firstname} ${target.lastname} ?`);
+    if (!first) return;
+    const second = confirm(`⚠️ Confirmation finale : cette action est irréversible. ${target.firstname} ${target.lastname} recevra un email l'informant de la suppression. Continuer ?`);
+    if (!second) return;
 
     await fetch(`${API}/api/admin/users/${id}`, {
       method: 'DELETE',
