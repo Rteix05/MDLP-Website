@@ -7,9 +7,9 @@ import { useRouter } from 'next/navigation';
 // Créneaux disponibles : 14h00 → 17h30, toutes les 30 min
 const TIME_SLOTS = ['14:00', '14:30', '15:00', '15:30', '16:00', '16:30', '17:00', '17:30'];
 
-function isWeekday(dateStr: string): boolean {
-  const day = new Date(dateStr + 'T12:00:00').getDay(); // midi pour éviter timezone
-  return day >= 1 && day <= 5;
+function isAllowedDay(dateStr: string): boolean {
+  const day = new Date(dateStr + 'T12:00:00').getDay(); // 2=Mardi, 4=Jeudi
+  return day === 2 || day === 4;
 }
 
 function toLocalDatetimeString(dateStr: string, timeStr: string): string {
@@ -58,8 +58,8 @@ export default function AppointmentPage() {
       alert('Veuillez choisir une date et un créneau horaire.');
       return;
     }
-    if (!isWeekday(selectedDate)) {
-      alert('Les rendez-vous sont uniquement disponibles du Lundi au Vendredi.');
+    if (!isAllowedDay(selectedDate)) {
+      alert('Les rendez-vous sont uniquement disponibles le Mardi et le Jeudi.');
       return;
     }
 
@@ -93,7 +93,7 @@ export default function AppointmentPage() {
     <main className="min-h-screen p-8 bg-gray-50 text-black flex items-center justify-center">
       <div className="bg-white p-8 rounded-lg shadow-lg w-full max-w-lg border-t-4 border-blue-600">
         <h1 className="text-2xl font-bold mb-2 text-center text-blue-900">Prendre Rendez-vous</h1>
-        <p className="text-center text-sm text-gray-400 mb-6">Lundi – Vendredi · 14h00 – 18h00 · Créneaux de 30 min</p>
+        <p className="text-center text-sm text-gray-400 mb-6">Mardi & Jeudi · 14h00 – 18h00 · Visioconférence · Créneaux de 30 min</p>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
 
@@ -113,9 +113,14 @@ export default function AppointmentPage() {
             </select>
           </div>
 
+          {/* Type fixe : visio */}
+          <div className="bg-blue-50 border border-blue-200 rounded px-4 py-2 text-sm text-blue-700 font-medium">
+            📹 Tous les rendez-vous se déroulent en visioconférence.
+          </div>
+
           {/* Sélection du jour */}
           <div>
-            <label className="block text-sm font-bold text-gray-700 mb-1">Jour (Lun – Ven)</label>
+            <label className="block text-sm font-bold text-gray-700 mb-1">Jour (Mardi ou Jeudi uniquement)</label>
             <input
               type="date"
               required
@@ -124,8 +129,8 @@ export default function AppointmentPage() {
               value={selectedDate}
               onChange={(e) => {
                 const val = e.target.value;
-                if (val && !isWeekday(val)) {
-                  alert('Veuillez choisir un jour en semaine (Lundi – Vendredi).');
+                if (val && !isAllowedDay(val)) {
+                  alert('Les rendez-vous sont uniquement disponibles le Mardi et le Jeudi.');
                   setSelectedDate('');
                 } else {
                   setSelectedDate(val);

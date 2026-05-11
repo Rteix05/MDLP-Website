@@ -34,12 +34,12 @@ class AppointmentController extends AbstractController
             }
 
             $dateObj = new \DateTimeImmutable($data['date']);
-            $dayOfWeek = (int) $dateObj->format('N'); // 1=Lundi, 7=Dimanche
+            $dayOfWeek = (int) $dateObj->format('N'); // 1=Lundi, 2=Mardi, 4=Jeudi
             $hour = (int) $dateObj->format('H');
             $minute = (int) $dateObj->format('i');
 
-            if ($dayOfWeek > 5) {
-                return $this->json(['message' => 'Les rendez-vous sont uniquement disponibles du Lundi au Vendredi.'], 400);
+            if ($dayOfWeek !== 2 && $dayOfWeek !== 4) {
+                return $this->json(['message' => 'Les rendez-vous sont uniquement disponibles le Mardi et le Jeudi.'], 400);
             }
             if ($hour < 14 || $hour >= 18 || ($hour === 17 && $minute > 30) || ($minute !== 0 && $minute !== 30)) {
                 return $this->json(['message' => 'Le créneau doit être entre 14h00 et 17h30, par tranche de 30 minutes.'], 400);
@@ -52,7 +52,7 @@ class AppointmentController extends AbstractController
 
             $appointment->setPastor($data['pastor'] ?? 'Non spécifié'); 
             $appointment->setMessage($data['message'] ?? '');
-            $appointment->setMeetingType($data['meetingType'] ?? 'presentiel');
+            $appointment->setMeetingType('visio');
             $appointment->setStatus('PENDING');
             $appointment->setUser($user);
             $appointment->setDate(new \DateTimeImmutable($data['date']));
