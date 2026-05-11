@@ -54,9 +54,9 @@ export default function UserManagementPage() {
 
     const targetIsAdmin = target.roles?.includes('ROLE_ADMIN');
 
-    // Bloquer la rétrogradation d'un autre admin
-    if (targetIsAdmin && target.email !== currentUserEmail) {
-      alert('Vous ne pouvez pas rétrograder un autre administrateur.');
+    // Bloquer toute rétrogradation d'admin (soi-même ou un autre)
+    if (targetIsAdmin) {
+      alert('Il est impossible de rétrograder un compte administrateur.');
       return;
     }
 
@@ -66,8 +66,6 @@ export default function UserManagementPage() {
       if (!first) return;
       const second = confirm(`⚠️ Confirmation finale : ${target.firstname} ${target.lastname} aura accès à TOUTES les données du site. Continuer ?`);
       if (!second) return;
-    } else {
-      if (!confirm(`Rétrograder votre propre compte admin ?`)) return;
     }
 
     const res = await fetch(`${API}/api/admin/users/${id}/role`, {
@@ -167,10 +165,10 @@ export default function UserManagementPage() {
                                                 {/* Bouton Rôle */}
                                                 <button 
                                                     onClick={() => handleToggleRole(user.id)}
-                                                    disabled={isAdmin && user.email !== currentUserEmail}
-                                                    title={isAdmin && user.email !== currentUserEmail ? 'Impossible de rétrograder un autre admin' : ''}
+                                                    disabled={isAdmin}
+                                                    title={isAdmin ? 'Impossible de rétrograder un administrateur' : ''}
                                                     className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-[9px] font-bold uppercase tracking-wider transition border ${
-                                                      isAdmin && user.email !== currentUserEmail
+                                                      isAdmin
                                                         ? 'bg-gray-50 text-gray-300 border-gray-100 cursor-not-allowed'
                                                         : 'bg-gray-50 text-gray-600 hover:bg-gray-200 hover:text-black border-gray-100'
                                                     }`}
