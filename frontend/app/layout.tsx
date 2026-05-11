@@ -13,8 +13,25 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "La Montagne de La Prière",
-  description: "Site officiel de La Montagne de La Prière",
+  title: {
+    default: "MDLP – Montagne de la Prière",
+    template: "%s",
+  },
+  description: "Église chrétienne Montagne de la Prière à Noisy-le-Grand, fondée par le pasteur Samuel Panzu. Enseignements bibliques, cultes en direct, dons et rendez-vous en ligne.",
+  metadataBase: new URL("https://www.samuelpanzutv.com"),
+  openGraph: {
+    title: "MDLP – Montagne de la Prière",
+    description: "Église chrétienne à Noisy-le-Grand fondée par le pasteur Samuel Panzu. Cultes, enseignements et dons en ligne.",
+    url: "https://www.samuelpanzutv.com",
+    siteName: "MDLP – Montagne de la Prière",
+    locale: "fr_FR",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "MDLP – Montagne de la Prière",
+    description: "Église chrétienne à Noisy-le-Grand fondée par le pasteur Samuel Panzu.",
+  },
   icons: {
     icon: '/favicon.ico',
     shortcut: '/favicon.ico',
