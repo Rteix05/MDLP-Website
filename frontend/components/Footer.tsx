@@ -114,14 +114,18 @@ export default function Footer() {
               <Link key={item.href} href={item.href} className="hover:text-gold transition">{item.label}</Link>
             ))}
           </nav>
-          <a
-            href="https://www.rafaelteixeira.fr"
-            target="_blank"
-            rel="noopener"
-            className="text-white/30 hover:text-white/60 transition"
-          >
-            Rteix05
-          </a>
+          <div className="flex items-center gap-3 text-white/30">
+            <span title="Version du site">v{process.env.NEXT_PUBLIC_APP_VERSION}</span>
+            <span aria-hidden="true">·</span>
+            <a
+              href="https://www.rafaelteixeira.fr"
+              target="_blank"
+              rel="noopener"
+              className="hover:text-white/60 transition"
+            >
+              Rteix05
+            </a>
+          </div>
         </div>
       </div>
     </footer>

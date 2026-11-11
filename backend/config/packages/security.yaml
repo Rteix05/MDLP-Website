@@ -43,6 +43,8 @@ security:
         - { path: ^/api/login, roles: PUBLIC_ACCESS }
         - { path: ^/api/events, methods: [GET], roles: PUBLIC_ACCESS }
         - { path: ^/api/contact, roles: PUBLIC_ACCESS }
+        # Mesure d'audience interne (pages vues, sans donnée personnelle)
+        - { path: ^/api/track$, methods: [POST], roles: PUBLIC_ACCESS }
         - { path: ^/api/payment/stripe-webhook, roles: PUBLIC_ACCESS }
         - { path: ^/api/payment/stripe-session, roles: PUBLIC_ACCESS }
         - { path: ^/api/payment/by-session, methods: [GET], roles: PUBLIC_ACCESS }

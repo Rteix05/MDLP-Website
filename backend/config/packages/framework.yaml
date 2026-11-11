@@ -25,6 +25,11 @@ framework:
             policy: sliding_window
             limit: 3
             interval: '1 hour'
+        # Mesure d'audience : 120 pages vues par minute par IP (au-delà, ignorées)
+        page_view:
+            policy: sliding_window
+            limit: 120
+            interval: '1 minute'
         # Formulaire de contact : 5 messages par heure par IP
         contact_form:
             policy: sliding_window

@@ -4,6 +4,8 @@ namespace App\Controller;
 
 use App\Repository\PaymentRepository; // <--- N'oublie pas d'importer ça
 use App\Repository\UserRepository;
+use App\Analytics\SiteStatistics;
+use Symfony\Component\HttpFoundation\Request;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\Routing\Attribute\Route;
@@ -35,5 +37,12 @@ class AdminStatsController extends AbstractController
             'userCount' => $userCount,
             'totalRevenue' => (float)$totalRevenue // On s'assure que c'est un chiffre
         ]);
+    }
+
+    // Statistiques du site (fréquentation, inscriptions, dons, rendez-vous) sur 7, 30, 90 ou 365 jours
+    #[Route('/site', name: 'site', methods: ['GET'])]
+    public function site(Request $request, SiteStatistics $statistics): JsonResponse
+    {
+        return $this->json($statistics->forPeriod($request->query->getInt('periode', 30)));
     }
 }
