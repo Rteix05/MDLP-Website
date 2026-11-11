@@ -1,6 +1,11 @@
 import type { NextConfig } from "next";
+import { version } from "./package.json";
 
 const nextConfig: NextConfig = {
+  // Version affichée dans le pied de page (à mettre à jour dans package.json à chaque release)
+  env: {
+    NEXT_PUBLIC_APP_VERSION: version,
+  },
   images: {
     domains: ["localhost", "samuelpanzutv.com"], 
     formats: ["image/webp", "image/avif"],

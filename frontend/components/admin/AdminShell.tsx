@@ -3,7 +3,7 @@
 import { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { ArrowLeft, CalendarClock, CreditCard, LayoutDashboard, Menu, Users, X } from 'lucide-react';
+import { ArrowLeft, BarChart3, CalendarClock, CreditCard, LayoutDashboard, Menu, Users, X } from 'lucide-react';
 import { adminFetch } from '@/lib/adminApi';
 import { AdminProviders } from './ui';
 import DisplayPreferences from '../DisplayPreferences';
@@ -15,6 +15,7 @@ export const usePending = () => useContext(PendingContext);
 const NAV = [
   { section: null, items: [
     { href: '/admin', label: "Vue d'ensemble", icon: LayoutDashboard, badge: true },
+    { href: '/admin/statistiques', label: 'Statistiques', icon: BarChart3 },
   ] },
   { section: 'Membres & dons', items: [
     { href: '/admin/users', label: 'Utilisateurs', icon: Users },

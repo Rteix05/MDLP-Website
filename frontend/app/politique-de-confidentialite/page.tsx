@@ -28,6 +28,7 @@ export default function PolitiqueConfidentialitePage() {
           <><strong>Formulaire de contact :</strong> nom, adresse email, sujet et message, transmis par email à l&apos;église</>,
           <><strong>Données de connexion :</strong> jeton d&apos;authentification stocké dans un cookie de votre navigateur</>,
           <><strong>Données techniques :</strong> adresse IP, type de navigateur (via les journaux du serveur)</>,
+          <><strong>Fréquentation :</strong> pages consultées, site d&apos;origine et type d&apos;appareil, rattachés à une empreinte anonyme renouvelée chaque jour (voir l&apos;article 9)</>,
         ]} />
       </LegalArticle>
 
@@ -58,6 +59,7 @@ export default function PolitiqueConfidentialitePage() {
           <><strong>Rendez-vous :</strong> pendant la durée du compte</>,
           <><strong>Dons :</strong> 10 ans, conformément aux obligations comptables</>,
           <><strong>Liens de réinitialisation du mot de passe :</strong> 1 heure</>,
+          <><strong>Mesure de fréquentation :</strong> 13 mois</>,
         ]} />
       </LegalArticle>
 
@@ -98,12 +100,21 @@ export default function PolitiqueConfidentialitePage() {
         </p>
       </LegalArticle>
 
-      <LegalArticle id="cookies" title="9. Cookies">
-        <p>Le site n&apos;utilise aucun cookie publicitaire ni outil de mesure d&apos;audience. Seuls sont enregistrés :</p>
+      <LegalArticle id="cookies" title="9. Cookies et mesure d'audience">
+        <p>Le site n&apos;utilise aucun cookie publicitaire ni outil de mesure d&apos;audience tiers. Seuls sont enregistrés :</p>
         <LegalList items={[
           "un cookie de connexion, strictement nécessaire, déposé uniquement lorsque vous vous connectez (il expire au bout d'un jour) ;",
           "vos préférences d'affichage (thème clair ou sombre, taille du texte, liens et texte en gras), enregistrées uniquement dans votre navigateur, à votre demande.",
         ]} />
+        <p>
+          Pour connaître la fréquentation du site (nombre de visiteurs, pages consultées, site d&apos;origine, type
+          d&apos;appareil), nous utilisons notre propre outil de mesure d&apos;audience, <strong>sans cookie</strong>.
+          Votre adresse IP n&apos;est jamais enregistrée : elle sert seulement, avec le type de navigateur, à calculer
+          une empreinte anonyme renouvelée chaque jour, qui ne permet ni de vous identifier ni de vous suivre d&apos;un
+          jour à l&apos;autre. Ces statistiques sont réservées à l&apos;usage interne de l&apos;association, ne sont
+          jamais transmises à des tiers et sont supprimées au bout de 13 mois. Conformément aux recommandations de la
+          CNIL, cette mesure d&apos;audience est dispensée de consentement.
+        </p>
         <p>
           Les liens vers YouTube et Facebook ouvrent ces services dans un nouvel onglet : aucun de leurs contenus
           n&apos;est chargé sur notre site.
