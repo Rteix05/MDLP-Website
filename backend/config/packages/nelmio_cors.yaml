@@ -1,20 +1,17 @@
 nelmio_cors:
     defaults:
         origin_regex: false
+        # Seuls le site et les environnements locaux peuvent appeler l'API depuis un navigateur
         allow_origin: ['http://localhost:3000', 'http://127.0.0.1:3000', '%env(FRONTEND_URL)%', 'https://www.samuelpanzutv.com', 'https://mdlp-website.vercel.app']
         allow_methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS']
         allow_headers: ['Content-Type', 'Authorization']
         expose_headers: ['Link']
         max_age: 3600
     paths:
-        '^/api/admin':
-            allow_origin: ['http://localhost:3000', 'http://127.0.0.1:3000', '%env(FRONTEND_URL)%', 'https://www.samuelpanzutv.com', 'https://mdlp-website.vercel.app']
-            allow_methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS']
-            allow_headers: ['Content-Type', 'Authorization']
-        '^/api':
-            allow_origin: ['http://localhost:3000', 'http://127.0.0.1:3000', '%env(FRONTEND_URL)%', 'https://www.samuelpanzutv.com', 'https://mdlp-website.vercel.app']
-            allow_methods: ['GET', 'POST', 'OPTIONS']
-            allow_headers: ['Content-Type', 'Authorization']
+        # Toute l'API, admin comprise : l'accès réel reste contrôlé par security.yaml et les #[IsGranted].
+        # (Avant, seul /api/admin acceptait PUT/PATCH/DELETE : la modification du profil, le changement
+        # de mot de passe et l'annulation d'un rendez-vous étaient bloqués par le navigateur.)
+        '^/api': ~
+        # Fichiers publics (PDF des cours…) : lecture seule
         '^/':
-            allow_origin: ['http://localhost:3000', 'http://127.0.0.1:3000', '%env(FRONTEND_URL)%', 'https://www.samuelpanzutv.com', 'https://mdlp-website.vercel.app']
             allow_methods: ['GET', 'OPTIONS']

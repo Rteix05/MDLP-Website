@@ -81,7 +81,7 @@ class InvoicePdfService
                             <div class='section-title'>Organisme bénéficiaire</div>
                             <div class='info-box'>
                                 <p class='info-text'>ASSOCIATION MDLP</p>
-                                <p class='info-subtext'>5 Allée Bienvenue</p>
+                                <p class='info-subtext'>2 Allée Bienvenue</p>
                                 <p class='info-subtext'>93130 Noisy-Le-Grand</p>
                                 <p class='info-subtext'>France</p>
                                 <p class='info-subtext' style='margin-top: 8px;'>Email: contact@mdlp.fr</p>
@@ -134,7 +134,7 @@ class InvoicePdfService
                 </div>
 
                 <div class='footer'>
-                    ASSOCIATION MDLP - Association loi 1901 - 5 Allée Bienvenue, 93130 Noisy-Le-Grand<br>
+                    ASSOCIATION MDLP - Association loi 1901 - 2 Allée Bienvenue, 93130 Noisy-Le-Grand<br>
                     Document généré électroniquement, tenant lieu de reçu. À conserver dans vos archives.
                 </div>
 
