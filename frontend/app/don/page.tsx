@@ -66,7 +66,7 @@ export default function DonationPage() {
             if (data.url) {
                 window.location.href = data.url;
             } else {
-                alert("Erreur lors de l'initialisation Stripe");
+                alert(data.error || "Erreur lors de l'initialisation Stripe");
             }
         } catch (error) {
             console.error(error);

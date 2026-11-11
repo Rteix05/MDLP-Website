@@ -53,7 +53,16 @@ class PaymentController extends AbstractController
     public function createStripeSession(Request $request, LoggerInterface $logger): JsonResponse
     {
         $data = json_decode($request->getContent(), true);
-        $amount = $data['amount'] ?? 10;
+        $rawAmount = $data['amount'] ?? 10;
+
+        // Montant en euros, entre 1 € et 50 000 €, arrondi au centime
+        if (!is_numeric($rawAmount)) {
+            return $this->json(['error' => 'Montant invalide'], 400);
+        }
+        $amountCents = (int) round(((float) $rawAmount) * 100);
+        if ($amountCents < 100 || $amountCents > 5000000) {
+            return $this->json(['error' => 'Le montant doit être compris entre 1 € et 50 000 €'], 400);
+        }
 
         // On initialise Stripe avec la clé secrète du .env
         Stripe::setApiKey($this->stripeSecretKey);
@@ -76,7 +85,7 @@ class PaymentController extends AbstractController
                         'product_data' => [
                             'name' => 'Don au Ministère',
                         ],
-                        'unit_amount' => $amount * 100, // Stripe compte en centimes
+                        'unit_amount' => $amountCents, // Stripe compte en centimes
                     ],
                     'quantity' => 1,
                 ]],

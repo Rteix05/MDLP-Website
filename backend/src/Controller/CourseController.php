@@ -59,6 +59,11 @@ class CourseController extends AbstractController
     #[Route('/courses/{id}/download', name: 'download', methods: ['GET'])]
     public function download(Course $course): BinaryFileResponse|JsonResponse
     {
+        // Un cours masqué n'est téléchargeable que par un administrateur
+        if (!$course->isVisible() && !$this->isGranted('ROLE_ADMIN')) {
+            return $this->json(['error' => 'Cours introuvable'], 404);
+        }
+
         if (!$course->getPdfFilename()) {
             return $this->json(['error' => 'Aucun fichier associé'], 404);
         }

@@ -9,6 +9,7 @@ use Psr\Log\LoggerInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Attribute\Route;
+use Symfony\Component\Security\Http\Attribute\IsGranted;
 
 #[Route('/api', name: 'api_')]
 class EventController extends AbstractController
@@ -41,6 +42,7 @@ class EventController extends AbstractController
 
     // 2. Créer un événement
     #[Route('/events', name: 'create_event', methods: ['POST'])]
+    #[IsGranted('ROLE_ADMIN')]
     public function createEvent(Request $request, EntityManagerInterface $em, LoggerInterface $logger): JsonResponse
     {
         try {
