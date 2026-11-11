@@ -74,8 +74,15 @@ function Switch({ label, checked, onChange }: { label: string; checked: boolean;
   );
 }
 
-/** Bouton flottant (bas gauche, toutes les pages) ouvrant le panneau des réglages */
-export default function DisplayPreferences() {
+/**
+ * Bouton « Réglages d'affichage » à placer dans une barre de navigation ou un en-tête.
+ * - buttonClassName : couleurs du bouton, adaptées à la barre qui l'accueille
+ * - panel : « below » ouvre le panneau sous le bouton (aligné à droite), « above » au-dessus (aligné à gauche)
+ */
+export default function DisplayPreferences({
+  buttonClassName = 'text-black hover:bg-gray-100',
+  panel = 'below',
+}: { buttonClassName?: string; panel?: 'below' | 'above' }) {
   // Le panneau est fermé au premier rendu : lire les préférences ici ne crée pas d'écart d'hydratation
   const [prefs, setPrefs] = useState<Prefs>(() => (typeof window === 'undefined' ? DEFAULT_PREFS : readPrefs()));
   const [open, setOpen] = useState(false);
@@ -135,13 +142,15 @@ export default function DisplayPreferences() {
   const sizeButton = 'dp-size flex h-11 w-11 shrink-0 items-center justify-center rounded-full transition disabled:cursor-not-allowed disabled:opacity-40';
 
   return (
-    <div ref={wrapperRef} className="display-prefs fixed bottom-4 left-4 z-[80]">
+    <div ref={wrapperRef} className="display-prefs relative">
       {open && (
         <div
           id={panelId}
           role="dialog"
           aria-label="Réglages d'affichage"
-          className="dp-panel absolute bottom-16 left-0 w-80 max-w-[calc(100vw-2rem)] rounded-2xl p-5 shadow-2xl"
+          className={`dp-panel absolute z-[90] w-80 max-w-[calc(100vw-2rem)] rounded-2xl p-5 shadow-2xl text-left normal-case tracking-normal ${
+            panel === 'below' ? 'right-0 top-full mt-3' : 'left-0 bottom-full mb-3'
+          }`}
         >
           <div className="mb-4 flex items-center justify-between">
             <p className="text-base font-black uppercase tracking-tight">Réglages d&apos;affichage</p>
@@ -214,9 +223,9 @@ export default function DisplayPreferences() {
         aria-controls={panelId}
         aria-label="Réglages d'affichage : thème, taille du texte, gras"
         title="Réglages d'affichage"
-        className="flex h-12 w-12 items-center justify-center rounded-full bg-[#800080] text-[#FFD700] shadow-xl ring-2 ring-[#FFD700]/60 transition hover:scale-105 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#FFD700]"
+        className={`flex h-10 w-10 items-center justify-center rounded-full transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#FFD700] ${buttonClassName}`}
       >
-        <Accessibility className="h-6 w-6" aria-hidden="true" />
+        <Accessibility className="h-5 w-5" aria-hidden="true" />
       </button>
     </div>
   );

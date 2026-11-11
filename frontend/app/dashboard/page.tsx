@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Loader from '@/components/Loader';
 import Cookies from 'js-cookie';
+import DisplayPreferences from '@/components/DisplayPreferences';
 import { useRouter } from 'next/navigation';
 import { 
     LayoutDashboard, MessageSquare, FileText, Settings, LogOut, Bell, 
@@ -329,6 +330,7 @@ export default function DashboardPage() {
                     </div>
 
                     <div className="flex items-center gap-4 md:gap-6 ml-auto">
+                        <DisplayPreferences buttonClassName="text-gray-400 hover:text-gray-900 hover:bg-gray-50" />
                         <button className="relative p-2 rounded-full hover:bg-gray-50 transition">
                             <Bell size={20} className="text-gray-400 hover:text-gray-900"/>
                             <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border border-white"></span>

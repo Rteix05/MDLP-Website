@@ -5,6 +5,7 @@ import Link from 'next/link';
 import Cookies from 'js-cookie';
 import { Menu, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import DisplayPreferences from './DisplayPreferences';
 
 interface NavbarProps {
   theme?: 'home' | 'dark' | 'light';
@@ -99,6 +100,9 @@ export default function Navbar({ theme = 'dark' }: NavbarProps) {
               Faire un don
             </Link>
 
+            {/* RÉGLAGES D'AFFICHAGE (thème, taille du texte, gras) */}
+            <DisplayPreferences buttonClassName={`${textColor} hover:bg-current/10`} />
+
             {/* AUTHENTIFICATION */}
             {isLoggedIn ? (
               <Link href="/dashboard" className={`text-xs font-bold uppercase tracking-[0.15em] hover:opacity-50 transition ${textColor}`}>
@@ -119,13 +123,18 @@ export default function Navbar({ theme = 'dark' }: NavbarProps) {
             )}
           </div>
 
-          {/* BOUTON HAMBURGER (MOBILE) */}
-          <button 
-            className={`md:hidden relative z-[60] p-2 transition-colors ${mobileMenuOpen ? 'text-white' : textColor}`}
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-          >
-            {mobileMenuOpen ? <X size={28} /> : <Menu size={28} />}
-          </button>
+          {/* MOBILE : réglages d'affichage + hamburger */}
+          <div className="md:hidden flex items-center gap-1 relative z-[60]">
+            {!mobileMenuOpen && <DisplayPreferences buttonClassName={`${textColor} hover:bg-current/10`} />}
+            <button
+              className={`p-2 transition-colors ${mobileMenuOpen ? 'text-white' : textColor}`}
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              aria-label={mobileMenuOpen ? 'Fermer le menu' : 'Ouvrir le menu'}
+              aria-expanded={mobileMenuOpen}
+            >
+              {mobileMenuOpen ? <X size={28} /> : <Menu size={28} />}
+            </button>
+          </div>
         </div>
       </nav>
 

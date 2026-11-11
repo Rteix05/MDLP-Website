@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Cookies from 'js-cookie';
+import DisplayPreferences from '@/components/DisplayPreferences';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Loader from '@/components/Loader';
@@ -259,6 +260,9 @@ export default function ProfilePage() {
                         <Menu size={24} />
                     </button>
                     <h1 className="text-lg md:text-xl font-black text-gray-900 tracking-tight uppercase">Mon Profil Personnel</h1>
+                    <div className="ml-auto">
+                        <DisplayPreferences buttonClassName="text-gray-400 hover:text-gray-900 hover:bg-gray-50" />
+                    </div>
                 </header>
 
                 <div className="flex-1 overflow-y-auto p-6 md:p-12">
