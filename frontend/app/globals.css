@@ -13,6 +13,21 @@ input, textarea, [contenteditable] {
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  --text-scale: 1;
+}
+
+/*
+ * Charte MDLP : violet #800080, or #FFD700, blanc #FFFFFF.
+ * « black » est redéfini en violet : toutes les classes bg-black / text-black / border-black
+ * du site prennent la couleur de la charte. Les nuances sombres gray-900/950 suivent aussi.
+ * « gold » sert aux accents (boutons et sur-titres sur fond violet).
+ */
+@theme {
+  --color-black: #800080;
+  --color-gray-900: #800080;
+  --color-gray-950: #800080;
+  --color-gold: #FFD700;
+  --color-violet-deep: #660066;
 }
 
 @theme inline {
@@ -22,11 +37,9 @@ input, textarea, [contenteditable] {
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  /* Taille du texte choisie dans les réglages d'affichage (90 % à 200 %) */
+  font-size: calc(100% * var(--text-scale));
 }
 
 body {
@@ -34,3 +47,95 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* ------------------------------------------------------------------ */
+/* Réglages d'affichage : texte agrandi, liens et texte en gras        */
+/* ------------------------------------------------------------------ */
+
+/* Les tailles en pixels ne suivent pas la taille de base : on les agrandit aussi */
+html.a11y-text-large .text-\[9px\]  { font-size: calc(9px * var(--text-scale)); }
+html.a11y-text-large .text-\[10px\] { font-size: calc(10px * var(--text-scale)); }
+html.a11y-text-large .text-\[11px\] { font-size: calc(11px * var(--text-scale)); }
+html.a11y-text-large .text-\[15px\] { font-size: calc(15px * var(--text-scale)); }
+
+html.a11y-bold-links a {
+  font-weight: 800 !important;
+}
+html.a11y-bold-links a:not([class*="bg-"]) {
+  text-decoration: underline !important;
+  text-underline-offset: 3px;
+}
+
+html.a11y-bold-text body *:not(svg):not(svg *):not([class*="font-black"]) {
+  font-weight: 700 !important;
+}
+
+/* Panneau des réglages : couleurs propres, indépendantes des surcharges du mode sombre */
+.dp-panel { background: #ffffff; color: #800080; border: 1px solid #ead7ea; }
+.dp-muted { color: #6b4f6e; }
+.dp-segment { background: #f6eef7; }
+.dp-row:hover { background: #f6eef7; }
+.dp-size { background: #f6eef7; color: #800080; }
+.dp-size:hover:not(:disabled) { background: #ead7ea; }
+.dp-switch-off { border-color: #8a7290; background: #ffffff; }
+.dp-knob-off { background: #8a7290; }
+.dp-reset { border: 1px solid #ead7ea; color: #800080; }
+.dp-reset:hover:not(:disabled) { border-color: #800080; }
+
+html.dark .dp-panel { background: #22102a; color: #f6eef7; border-color: #3d2547; }
+html.dark .dp-muted { color: #c9b6cd; }
+html.dark .dp-segment { background: #170a1c; }
+html.dark .dp-row:hover { background: #2c1735; }
+html.dark .dp-size { background: #2c1735; color: #FFD700; }
+html.dark .dp-size:hover:not(:disabled) { background: #3d2547; }
+html.dark .dp-switch-off { border-color: #a993ae; background: transparent; }
+html.dark .dp-knob-off { background: #c9b6cd; }
+html.dark .dp-reset { border-color: #3d2547; color: #f6eef7; }
+html.dark .dp-reset:hover:not(:disabled) { border-color: #FFD700; }
+
+/* ------------------------------------------------------------------ */
+/* Mode sombre                                                         */
+/* Même principe que l'Académie E.S.I.C. : les utilitaires clairs du   */
+/* site sont remplacés par des teintes sombres violettes, sans toucher */
+/* aux composants. Ces règles hors couche passent devant Tailwind.     */
+/* ------------------------------------------------------------------ */
+
+html.dark {
+  --background: #170a1c;
+  --foreground: #f6eef7;
+  color-scheme: dark;
+}
+
+/* Fonds */
+html.dark .bg-white                { background-color: #22102a; }
+html.dark .bg-gray-50,
+html.dark .bg-\[\#FAFAFA\]         { background-color: #170a1c; }
+html.dark .bg-gray-50\/50          { background-color: rgb(23 10 28 / 0.5); }
+html.dark .bg-gray-100             { background-color: #2c1735; }
+html.dark .bg-gray-200             { background-color: #3d2547; }
+html.dark .bg-white\/90            { background-color: rgb(34 16 42 / 0.9); }
+
+/* Bordures */
+html.dark .border-gray-50,
+html.dark .border-gray-100,
+html.dark .border-gray-200         { border-color: #3d2547; }
+html.dark .border-gray-300         { border-color: #55385f; }
+html.dark .border-black            { border-color: #f6eef7; }
+html.dark :is(.divide-gray-50, .divide-gray-100) > :not(:last-child) { border-color: #3d2547; }
+
+/* Textes (sauf sur les boutons dorés, qui gardent le violet) */
+html.dark :is(.text-black, .text-gray-900, .text-gray-800):not(.bg-gold):not(.bg-gold *) { color: #f6eef7; }
+html.dark :is(.text-gray-700, .text-gray-600)  { color: #dccbe0; }
+html.dark :is(.text-gray-500, .text-gray-400)  { color: #b9a5bd; }
+html.dark .text-gray-300                       { color: #8a7290; }
+html.dark .marker\:text-black ::marker         { color: #FFD700; }
+
+/* Survols */
+html.dark :is(.hover\:bg-gray-50, .hover\:bg-gray-100):hover { background-color: #2c1735; }
+html.dark .hover\:bg-gray-200:hover          { background-color: #3d2547; }
+html.dark :is(.hover\:text-black, .hover\:text-gray-900, .hover\:text-gray-800):hover { color: #ffffff; }
+html.dark .hover\:border-black:hover         { border-color: #FFD700; }
+html.dark .group:hover .group-hover\:text-black { color: #FFD700; }
+
+/* Champs de formulaire */
+html.dark :is(input, textarea, select)::placeholder { color: #8a7290; }

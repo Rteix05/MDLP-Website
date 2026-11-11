@@ -40,7 +40,11 @@ export default function LoginPage() {
         throw new Error(data.message || 'Identifiants incorrects');
       }
 
-      Cookies.set('token', data.token, { expires: 1 });
+      Cookies.set('token', data.token, {
+        expires: 1,
+        sameSite: 'strict',
+        secure: window.location.protocol === 'https:',
+      });
       router.push('/dashboard');
 
     } catch (err: any) {

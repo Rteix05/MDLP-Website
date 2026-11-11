@@ -48,7 +48,7 @@ export default function ForgotPasswordPage() {
     };
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-[#111] via-[#0a0a0a] to-black font-sans text-gray-900 flex flex-col">
+        <div className="min-h-screen bg-gradient-to-br from-violet-deep via-black to-black font-sans text-gray-900 flex flex-col">
             
             {/* Si ça charge, on affiche le loader global avec l'écran flou */}
             {loading && <Loader />}

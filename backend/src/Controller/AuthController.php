@@ -3,6 +3,7 @@
 namespace App\Controller;
 
 use App\Entity\User;
+use App\Security\PasswordPolicy;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -35,18 +36,8 @@ class AuthController extends AbstractController
         }
 
         // Validation mot de passe (min 8 chars, 1 majuscule, 1 minuscule, 1 chiffre)
-        $password = $data['password'];
-        if (strlen($password) < 8) {
-            return $this->json(['message' => 'Le mot de passe doit contenir au moins 8 caractères'], 400);
-        }
-        if (!preg_match('/[A-Z]/', $password)) {
-            return $this->json(['message' => 'Le mot de passe doit contenir au moins une majuscule'], 400);
-        }
-        if (!preg_match('/[a-z]/', $password)) {
-            return $this->json(['message' => 'Le mot de passe doit contenir au moins une minuscule'], 400);
-        }
-        if (!preg_match('/[0-9]/', $password)) {
-            return $this->json(['message' => 'Le mot de passe doit contenir au moins un chiffre'], 400);
+        if ($passwordError = PasswordPolicy::validate($data['password'])) {
+            return $this->json(['message' => $passwordError], 400);
         }
 
         // Vérifier si l'email existe déjà
