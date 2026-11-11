@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { ArrowRight, Clock, Facebook, Mail, MapPin, Phone, Youtube } from 'lucide-react';
+import { ArrowRight, Clock, Facebook, MapPin, Phone, Youtube } from 'lucide-react';
 
 const navigation = [
   { href: '/', label: 'Accueil' },
@@ -93,11 +93,6 @@ export default function Footer() {
                 <Phone size={18} className="text-gold shrink-0 mt-0.5" /> 07 49 93 95 20
               </a>
             </li>
-            <li>
-              <a href="mailto:contact.lamontagnedelapriere@gmail.com" className="flex gap-3 hover:text-gold transition break-all">
-                <Mail size={18} className="text-gold shrink-0 mt-0.5" /> contact.lamontagnedelapriere@gmail.com
-              </a>
-            </li>
           </ul>
         </div>
       </div>
@@ -112,7 +107,7 @@ export default function Footer() {
             rel="noopener"
             className="text-white/30 hover:text-white/60 transition"
           >
-            rafaelteixeira.fr
+            Rteix05
           </a>
         </div>
       </div>
