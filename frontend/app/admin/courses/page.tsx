@@ -1,286 +1,247 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import Cookies from 'js-cookie';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Eye, EyeOff, Trash2, Plus, FileText, BookOpen, GraduationCap, Church, ArrowLeft, Upload } from 'lucide-react';
+import { BookOpen, Church, Eye, EyeOff, FileText, GraduationCap, Plus, Search, Trash2, Upload, X } from 'lucide-react';
+import { adminFetch, API, ApiError } from '@/lib/adminApi';
+import { Button, EmptyState, PageHeader, SkeletonRows, useConfirm, useToast } from '@/components/admin/ui';
 
 interface Course {
-    id: number;
-    title: string;
-    description: string;
-    category: string;
-    pdfFilename: string | null;
-    isVisible: boolean;
-    date: string;
+  id: number;
+  title: string;
+  description: string;
+  category: string;
+  pdfFilename: string | null;
+  isVisible: boolean;
+  date: string;
 }
 
 const CATEGORIES = [
-    { key: 'ecole-dimanche', label: 'École du Dimanche', icon: <BookOpen size={14} />, color: 'bg-amber-100 text-amber-700 border-amber-300' },
-    { key: 'cours-specifiques', label: 'Cours Spécifiques', icon: <GraduationCap size={14} />, color: 'bg-blue-100 text-blue-700 border-blue-300' },
-    { key: 'messes-dimanche', label: 'Présentations du Dimanche', icon: <Church size={14} />, color: 'bg-purple-100 text-purple-700 border-purple-300' },
+  { key: 'ecole-dimanche', label: 'École du Dimanche', icon: BookOpen, color: 'bg-amber-50 text-amber-700' },
+  { key: 'cours-specifiques', label: 'Cours Spécifiques', icon: GraduationCap, color: 'bg-sky-50 text-sky-700' },
+  { key: 'messes-dimanche', label: 'Présentations du Dimanche', icon: Church, color: 'bg-violet-50 text-violet-700' },
 ];
 
+const MAX_PDF_MB = 20;
+
+function CourseForm({ onCreated, onCancel }: { onCreated: () => void; onCancel: () => void }) {
+  const toast = useToast();
+  const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
+  const [category, setCategory] = useState(CATEGORIES[0].key);
+  const [pdfFile, setPdfFile] = useState<File | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  const pickFile = (file: File | null) => {
+    if (file && file.type !== 'application/pdf') { toast('error', 'Seuls les fichiers PDF sont acceptés.'); return; }
+    if (file && file.size > MAX_PDF_MB * 1024 * 1024) { toast('error', `Le PDF ne doit pas dépasser ${MAX_PDF_MB} Mo.`); return; }
+    setPdfFile(file);
+  };
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!title.trim()) return;
+    setSaving(true);
+    const form = new FormData();
+    form.append('title', title.trim());
+    form.append('description', description.trim());
+    form.append('category', category);
+    if (pdfFile) form.append('pdf', pdfFile);
+    try {
+      await adminFetch('/api/admin/courses', { method: 'POST', body: form });
+      toast('success', 'Cours publié.');
+      onCreated();
+    } catch (err) {
+      toast('error', err instanceof Error ? err.message : "Erreur lors de l'ajout du cours.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const field = 'w-full border border-gray-200 px-3.5 py-2.5 rounded-xl text-sm bg-white focus:border-gray-900 focus:ring-1 focus:ring-gray-900 outline-none transition';
+
+  return (
+    <form onSubmit={submit} className="bg-white rounded-2xl border border-gray-200 p-5 sm:p-6 mb-8 grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="md:col-span-2 flex items-center justify-between">
+        <h2 className="font-black text-gray-900">Nouveau cours</h2>
+        <button type="button" onClick={onCancel} className="p-1 text-gray-400 hover:text-gray-900" aria-label="Fermer le formulaire"><X size={18} /></button>
+      </div>
+      <label className="md:col-span-2 block">
+        <span className="block text-xs font-bold text-gray-600 mb-1.5">Titre *</span>
+        <input className={field} value={title} onChange={e => setTitle(e.target.value)} required maxLength={255} autoFocus />
+      </label>
+      <label className="md:col-span-2 block">
+        <span className="block text-xs font-bold text-gray-600 mb-1.5">Description</span>
+        <textarea className={`${field} h-24 resize-none`} value={description} onChange={e => setDescription(e.target.value)} />
+      </label>
+      <label className="block">
+        <span className="block text-xs font-bold text-gray-600 mb-1.5">Catégorie</span>
+        <select className={field} value={category} onChange={e => setCategory(e.target.value)}>
+          {CATEGORIES.map(c => <option key={c.key} value={c.key}>{c.label}</option>)}
+        </select>
+      </label>
+      <div>
+        <span className="block text-xs font-bold text-gray-600 mb-1.5">Fichier PDF <span className="font-normal text-gray-400">({MAX_PDF_MB} Mo max.)</span></span>
+        {pdfFile ? (
+          <div className="flex items-center gap-2 border border-gray-200 px-3.5 py-2.5 rounded-xl text-sm">
+            <FileText size={16} className="text-emerald-600 shrink-0" />
+            <span className="truncate flex-1">{pdfFile.name}</span>
+            <button type="button" onClick={() => setPdfFile(null)} className="text-gray-400 hover:text-gray-900" aria-label="Retirer le fichier"><X size={16} /></button>
+          </div>
+        ) : (
+          <label className="flex items-center gap-2 border border-dashed border-gray-300 px-3.5 py-2.5 rounded-xl cursor-pointer hover:border-gray-900 transition text-sm text-gray-500">
+            <Upload size={16} /> Choisir un fichier…
+            <input type="file" accept="application/pdf" className="sr-only" onChange={e => pickFile(e.target.files?.[0] || null)} />
+          </label>
+        )}
+      </div>
+      <div className="md:col-span-2 flex justify-end gap-2 pt-2">
+        <Button type="button" variant="secondary" onClick={onCancel}>Annuler</Button>
+        <Button type="submit" disabled={saving || !title.trim()}>{saving ? 'Publication…' : 'Publier le cours'}</Button>
+      </div>
+    </form>
+  );
+}
+
 export default function AdminCoursesPage() {
-    const [courses, setCourses] = useState<Course[]>([]);
-    const [title, setTitle] = useState('');
-    const [description, setDescription] = useState('');
-    const [category, setCategory] = useState('ecole-dimanche');
-    const [pdfFile, setPdfFile] = useState<File | null>(null);
-    const [loading, setLoading] = useState(false);
-    const [filterCat, setFilterCat] = useState<string>('all');
-    const router = useRouter();
-    const token = Cookies.get('token');
+  const router = useRouter();
+  const toast = useToast();
+  const confirm = useConfirm();
 
-    const API = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
+  const [courses, setCourses] = useState<Course[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showForm, setShowForm] = useState(false);
+  const [filterCat, setFilterCat] = useState('all');
+  const [search, setSearch] = useState('');
 
-    const fetchCourses = async () => {
-        try {
-            const res = await fetch(`${API}/api/admin/courses`, {
-                headers: { 'Authorization': `Bearer ${token}` },
-            });
-            if (res.status === 403) { router.push('/dashboard'); return; }
-            const data = await res.json();
-            if (Array.isArray(data)) setCourses(data);
-        } catch (err) {
-            console.error(err);
-        }
-    };
+  const fetchCourses = useCallback(async () => {
+    try {
+      const data = await adminFetch<Course[]>('/api/admin/courses');
+      setCourses(Array.isArray(data) ? data : []);
+    } catch (e) {
+      if (e instanceof ApiError && e.status === 403) router.push('/dashboard');
+      else toast('error', 'Impossible de charger les cours.');
+    } finally {
+      setLoading(false);
+    }
+  }, [router, toast]);
 
-    useEffect(() => { fetchCourses(); }, []);
+  useEffect(() => { fetchCourses(); }, [fetchCourses]);
 
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!title.trim() || !category) return;
-        setLoading(true);
+  const toggleVisibility = async (course: Course) => {
+    try {
+      await adminFetch(`/api/admin/courses/${course.id}/visibility`, { method: 'PATCH', body: JSON.stringify({ isVisible: !course.isVisible }) });
+      setCourses(list => list.map(c => (c.id === course.id ? { ...c, isVisible: !c.isVisible } : c)));
+      toast('success', course.isVisible ? 'Cours masqué du site.' : 'Cours de nouveau visible sur le site.');
+    } catch (e) {
+      toast('error', e instanceof Error ? e.message : 'Erreur lors de la mise à jour.');
+    }
+  };
 
-        const formData = new FormData();
-        formData.append('title', title.trim());
-        formData.append('description', description.trim());
-        formData.append('category', category);
-        if (pdfFile) formData.append('pdf', pdfFile);
+  const deleteCourse = async (course: Course) => {
+    const ok = await confirm({
+      title: 'Supprimer ce cours ?',
+      message: `« ${course.title} »${course.pdfFilename ? ' et son PDF' : ''} seront supprimés définitivement. Pour le retirer du site sans le perdre, masquez-le plutôt.`,
+      confirmLabel: 'Supprimer',
+      danger: true,
+    });
+    if (!ok) return;
+    try {
+      await adminFetch(`/api/admin/courses/${course.id}`, { method: 'DELETE' });
+      setCourses(list => list.filter(c => c.id !== course.id));
+      toast('success', 'Cours supprimé.');
+    } catch (e) {
+      toast('error', e instanceof Error ? e.message : 'Erreur lors de la suppression.');
+    }
+  };
 
-        try {
-            const res = await fetch(`${API}/api/admin/courses`, {
-                method: 'POST',
-                headers: { 'Authorization': `Bearer ${token}` },
-                body: formData,
-            });
-            if (!res.ok) throw new Error('Erreur');
-            setTitle('');
-            setDescription('');
-            setPdfFile(null);
-            // Reset file input
-            const fileInput = document.getElementById('pdf-input') as HTMLInputElement;
-            if (fileInput) fileInput.value = '';
-            fetchCourses();
-        } catch {
-            alert('Erreur lors de l\'ajout du cours');
-        } finally {
-            setLoading(false);
-        }
-    };
+  const visible = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return courses.filter(c =>
+      (filterCat === 'all' || c.category === filterCat) &&
+      (!q || `${c.title} ${c.description}`.toLowerCase().includes(q)));
+  }, [courses, filterCat, search]);
 
-    const toggleVisibility = async (id: number, currentVisibility: boolean) => {
-        await fetch(`${API}/api/admin/courses/${id}/visibility`, {
-            method: 'PATCH',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`,
-            },
-            body: JSON.stringify({ isVisible: !currentVisibility }),
-        });
-        fetchCourses();
-    };
+  return (
+    <>
+      <PageHeader
+        title="Cours"
+        subtitle="Les enseignements et supports PDF publiés sur le site."
+        actions={!showForm && <Button onClick={() => setShowForm(true)}><Plus size={16} /> Ajouter un cours</Button>}
+      />
 
-    const deleteCourse = async (id: number) => {
-        if (!confirm('Supprimer définitivement ce cours et son PDF ?')) return;
-        await fetch(`${API}/api/admin/courses/${id}`, {
-            method: 'DELETE',
-            headers: { 'Authorization': `Bearer ${token}` },
-        });
-        setCourses(courses.filter(c => c.id !== id));
-    };
+      {showForm && <CourseForm onCreated={() => { setShowForm(false); fetchCourses(); }} onCancel={() => setShowForm(false)} />}
 
-    const getCatStyle = (cat: string) => CATEGORIES.find(c => c.key === cat);
-    const filtered = filterCat === 'all' ? courses : courses.filter(c => c.category === filterCat);
+      <div className="flex flex-col lg:flex-row gap-3 mb-6">
+        <label className="flex items-center bg-white border border-gray-200 rounded-xl px-4 py-2.5 flex-1 focus-within:border-gray-900 transition">
+          <Search size={16} className="text-gray-400 mr-3" />
+          <span className="sr-only">Rechercher un cours</span>
+          <input type="search" placeholder="Rechercher un cours…" value={search} onChange={e => setSearch(e.target.value)} className="bg-transparent outline-none text-sm w-full" />
+        </label>
+        <div className="flex gap-1 bg-white border border-gray-200 rounded-xl p-1 overflow-x-auto" role="tablist" aria-label="Filtrer par catégorie">
+          {[{ key: 'all', label: 'Tous' }, ...CATEGORIES].map(c => (
+            <button
+              key={c.key}
+              role="tab"
+              aria-selected={filterCat === c.key}
+              onClick={() => setFilterCat(c.key)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition whitespace-nowrap ${filterCat === c.key ? 'bg-gray-900 text-white' : 'text-gray-500 hover:text-gray-900'}`}
+            >
+              {c.label} <span className="opacity-60">{c.key === 'all' ? courses.length : courses.filter(x => x.category === c.key).length}</span>
+            </button>
+          ))}
+        </div>
+      </div>
 
-    return (
-        <main className="min-h-screen bg-gray-50 p-6 md:p-8 text-black font-sans">
-            <div className="max-w-5xl mx-auto">
-
-                {/* HEADER */}
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
-                    <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-2">
-                        📚 Gestion des Cours
-                    </h1>
-                    <button
-                        onClick={() => router.push('/admin')}
-                        className="flex items-center gap-2 bg-gray-200 hover:bg-gray-300 px-4 py-2 rounded-lg text-sm font-bold transition"
-                    >
-                        <ArrowLeft size={16} /> Retour
-                    </button>
-                </div>
-
-                {/* FORMULAIRE D'AJOUT */}
-                <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 mb-8">
-                    <h2 className="text-lg font-bold mb-4 flex items-center gap-2">
-                        <Plus size={18} /> Ajouter un cours
-                    </h2>
-                    <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="md:col-span-2">
-                            <input
-                                type="text"
-                                placeholder="Titre du cours"
-                                className="w-full border border-gray-200 p-3 rounded-lg font-bold focus:ring-2 focus:ring-black focus:border-transparent outline-none"
-                                value={title}
-                                onChange={e => setTitle(e.target.value)}
-                                required
-                            />
-                        </div>
-                        <div className="md:col-span-2">
-                            <textarea
-                                placeholder="Description (optionnelle)"
-                                className="w-full border border-gray-200 p-3 rounded-lg h-24 focus:ring-2 focus:ring-black focus:border-transparent outline-none resize-none"
-                                value={description}
-                                onChange={e => setDescription(e.target.value)}
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Catégorie</label>
-                            <select
-                                className="w-full border border-gray-200 p-3 rounded-lg font-semibold bg-white focus:ring-2 focus:ring-black focus:border-transparent outline-none"
-                                value={category}
-                                onChange={e => setCategory(e.target.value)}
-                            >
-                                {CATEGORIES.map(cat => (
-                                    <option key={cat.key} value={cat.key}>{cat.label}</option>
-                                ))}
-                            </select>
-                        </div>
-                        <div>
-                            <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Fichier PDF</label>
-                            <label className="flex items-center gap-2 border border-dashed border-gray-300 p-3 rounded-lg cursor-pointer hover:border-gray-400 transition">
-                                <Upload size={16} className="text-gray-400" />
-                                <span className="text-sm text-gray-500 truncate">
-                                    {pdfFile ? pdfFile.name : 'Choisir un fichier PDF...'}
-                                </span>
-                                <input
-                                    id="pdf-input"
-                                    type="file"
-                                    accept="application/pdf"
-                                    className="hidden"
-                                    onChange={e => setPdfFile(e.target.files?.[0] || null)}
-                                />
-                            </label>
-                        </div>
-                        <div className="md:col-span-2">
-                            <button
-                                type="submit"
-                                disabled={loading}
-                                className="w-full bg-black hover:bg-gray-800 text-white py-3 rounded-xl font-bold text-sm uppercase tracking-wider transition disabled:bg-gray-400"
-                            >
-                                {loading ? 'Ajout en cours...' : 'Publier le cours'}
-                            </button>
-                        </div>
-                    </form>
-                </div>
-
-                {/* FILTRES */}
-                <div className="flex flex-wrap gap-2 mb-6">
-                    <button
-                        onClick={() => setFilterCat('all')}
-                        className={`px-4 py-2 rounded-full text-xs font-bold uppercase tracking-wider transition ${
-                            filterCat === 'all' ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
-                        }`}
-                    >
-                        Tout ({courses.length})
-                    </button>
-                    {CATEGORIES.map(cat => {
-                        const count = courses.filter(c => c.category === cat.key).length;
-                        return (
-                            <button
-                                key={cat.key}
-                                onClick={() => setFilterCat(cat.key)}
-                                className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-bold uppercase tracking-wider transition ${
-                                    filterCat === cat.key ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
-                                }`}
-                            >
-                                {cat.icon} {cat.label} ({count})
-                            </button>
-                        );
-                    })}
-                </div>
-
-                {/* LISTE DES COURS */}
-                <div className="space-y-3">
-                    {filtered.length > 0 ? filtered.map(course => {
-                        const catStyle = getCatStyle(course.category);
-                        return (
-                            <div
-                                key={course.id}
-                                className={`bg-white rounded-xl border shadow-sm p-5 flex flex-col sm:flex-row sm:items-center gap-4 transition ${
-                                    !course.isVisible ? 'opacity-50 border-dashed' : 'border-gray-100'
-                                }`}
-                            >
-                                {/* Infos */}
-                                <div className="flex-grow min-w-0">
-                                    <div className="flex items-center gap-2 mb-1 flex-wrap">
-                                        {catStyle && (
-                                            <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border ${catStyle.color}`}>
-                                                {catStyle.icon} {catStyle.label}
-                                            </span>
-                                        )}
-                                        {!course.isVisible && (
-                                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-red-100 text-red-600 border border-red-200">
-                                                <EyeOff size={10} /> Masqué
-                                            </span>
-                                        )}
-                                    </div>
-                                    <h3 className="font-bold text-gray-900 text-lg truncate">{course.title}</h3>
-                                    {course.description && (
-                                        <p className="text-gray-500 text-sm truncate">{course.description}</p>
-                                    )}
-                                    <div className="flex items-center gap-3 mt-1 text-xs text-gray-400">
-                                        <span>{new Date(course.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}</span>
-                                        {course.pdfFilename && (
-                                            <span className="flex items-center gap-1 text-green-600">
-                                                <FileText size={12} /> PDF joint
-                                            </span>
-                                        )}
-                                    </div>
-                                </div>
-
-                                {/* ACTIONS */}
-                                <div className="flex items-center gap-2 shrink-0">
-                                    <button
-                                        onClick={() => toggleVisibility(course.id, course.isVisible)}
-                                        className={`p-2.5 rounded-lg transition text-sm font-bold ${
-                                            course.isVisible
-                                                ? 'bg-amber-50 text-amber-600 hover:bg-amber-100'
-                                                : 'bg-green-50 text-green-600 hover:bg-green-100'
-                                        }`}
-                                        title={course.isVisible ? 'Masquer' : 'Afficher'}
-                                    >
-                                        {course.isVisible ? <EyeOff size={16} /> : <Eye size={16} />}
-                                    </button>
-                                    <button
-                                        onClick={() => deleteCourse(course.id)}
-                                        className="p-2.5 rounded-lg bg-red-50 text-red-500 hover:bg-red-100 transition"
-                                        title="Supprimer"
-                                    >
-                                        <Trash2 size={16} />
-                                    </button>
-                                </div>
-                            </div>
-                        );
-                    }) : (
-                        <div className="text-center py-12 bg-white rounded-xl border border-dashed border-gray-200">
-                            <p className="text-gray-400 font-bold uppercase tracking-widest text-sm">Aucun cours dans cette catégorie</p>
-                        </div>
+      {loading ? <SkeletonRows rows={4} /> : visible.length === 0 ? (
+        <EmptyState icon={<BookOpen size={20} />} title={courses.length === 0 ? 'Aucun cours publié' : 'Aucun cours ne correspond'}
+          text={courses.length === 0 ? 'Cliquez sur « Ajouter un cours » pour publier le premier.' : undefined} />
+      ) : (
+        <ul className="space-y-3">
+          {visible.map(course => {
+            const cat = CATEGORIES.find(c => c.key === course.category);
+            const CatIcon = cat?.icon;
+            return (
+              <li key={course.id} className={`bg-white rounded-2xl border p-5 flex flex-col sm:flex-row sm:items-center gap-4 ${course.isVisible ? 'border-gray-200' : 'border-dashed border-gray-300 bg-gray-50/60'}`}>
+                <div className="flex-1 min-w-0">
+                  <div className="flex flex-wrap items-center gap-2 mb-1.5">
+                    {cat && CatIcon && (
+                      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold ${cat.color}`}><CatIcon size={12} /> {cat.label}</span>
                     )}
+                    {!course.isVisible && (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-gray-200 text-gray-600"><EyeOff size={12} /> Masqué</span>
+                    )}
+                  </div>
+                  <h3 className={`font-bold truncate ${course.isVisible ? 'text-gray-900' : 'text-gray-500'}`}>{course.title}</h3>
+                  {course.description && <p className="text-sm text-gray-500 line-clamp-2 mt-0.5">{course.description}</p>}
+                  <div className="flex items-center gap-3 mt-1.5 text-xs text-gray-400">
+                    <span>Publié le {new Date(course.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}</span>
+                    {/* Un cours masqué n'est téléchargeable qu'avec le jeton admin : pas de lien direct */}
+                    {course.pdfFilename && !course.isVisible && (
+                      <span className="inline-flex items-center gap-1 font-semibold"><FileText size={12} /> PDF joint</span>
+                    )}
+                    {course.pdfFilename && course.isVisible && (
+                      <a href={`${API}/api/courses/${course.id}/download`} target="_blank" rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 text-emerald-700 hover:underline font-semibold">
+                        <FileText size={12} /> PDF
+                      </a>
+                    )}
+                  </div>
                 </div>
-            </div>
-        </main>
-    );
+                <div className="flex items-center gap-2 shrink-0">
+                  <Button variant="secondary" size="sm" onClick={() => toggleVisibility(course)}>
+                    {course.isVisible ? <><EyeOff size={14} /> Masquer</> : <><Eye size={14} /> Afficher</>}
+                  </Button>
+                  <Button variant="ghost" size="icon" onClick={() => deleteCourse(course)} className="hover:!text-red-600 hover:!bg-red-50"
+                    aria-label={`Supprimer ${course.title}`} title="Supprimer">
+                    <Trash2 size={16} />
+                  </Button>
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </>
+  );
 }
