@@ -83,6 +83,9 @@ export default function Navbar({ theme = 'dark' }: NavbarProps) {
             <Link href="/about" className={`text-xs font-bold uppercase tracking-[0.15em] hover:opacity-50 transition ${textColor}`}>
               À propos
             </Link>
+            <Link href="/biographie" className={`text-xs font-bold uppercase tracking-[0.15em] hover:opacity-50 transition ${textColor}`}>
+              Biographie
+            </Link>
             <Link href="/live" className={`text-xs font-bold uppercase tracking-[0.15em] hover:opacity-50 transition flex items-center gap-2 ${textColor}`}>
                 {mounted && isLive && (
                   <span className="relative flex h-2 w-2">
@@ -145,6 +148,9 @@ export default function Navbar({ theme = 'dark' }: NavbarProps) {
             <div className="flex flex-col gap-6 text-center">
               <Link href="/about" onClick={() => setMobileMenuOpen(false)} className="text-3xl font-black uppercase tracking-tighter text-white hover:text-gray-400 transition">
                 À propos
+              </Link>
+              <Link href="/biographie" onClick={() => setMobileMenuOpen(false)} className="text-3xl font-black uppercase tracking-tighter text-white hover:text-gray-400 transition">
+                Biographie
               </Link>
               
               {/* LIGNE CORRIGÉE POUR LE MOBILE */}

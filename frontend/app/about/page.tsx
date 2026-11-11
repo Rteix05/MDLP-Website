@@ -207,6 +207,12 @@ export default function AboutPage() {
               </motion.div>
             ))}
           </div>
+
+          <div className="text-center mt-16">
+            <Link href="/biographie" className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-widest border-b-2 border-black pb-1 hover:text-gray-500 hover:border-gray-500 transition">
+              Lire la biographie du pasteur Samuel Panzu <ArrowRight size={16} />
+            </Link>
+          </div>
         </div>
       </section>
 
