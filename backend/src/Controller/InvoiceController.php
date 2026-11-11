@@ -14,7 +14,8 @@ use Symfony\Component\Routing\Attribute\Route;
 #[Route('/api/invoice', name: 'api_invoice_')]
 class InvoiceController extends AbstractController
 {
-    #[Route('/{id}', name: 'download', methods: ['GET'])]
+    // requirements : sans ça, « /by-session » était capturé par cette route et renvoyait 404
+    #[Route('/{id}', name: 'download', methods: ['GET'], requirements: ['id' => '\d+'])]
     public function download(Payment $payment, InvoicePdfService $pdfService): Response
     {
         $user = $this->getUser();

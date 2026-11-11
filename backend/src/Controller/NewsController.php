@@ -52,6 +52,11 @@ class NewsController extends AbstractController
     #[Route('/news/{id}', name: 'get_one', methods: ['GET'])]
     public function getOne(News $news): JsonResponse
     {
+        // Une actualité non publiée n'est visible que par un administrateur
+        if (!$news->isPublished() && !$this->isGranted('ROLE_ADMIN')) {
+            return $this->json(['message' => 'Actualité introuvable'], 404);
+        }
+
         return $this->json([
             'id' => $news->getId(),
             'title' => $news->getTitle(),

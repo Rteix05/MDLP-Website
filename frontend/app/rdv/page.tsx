@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Cookies from 'js-cookie';
 import { useRouter } from 'next/navigation';
+import Navbar from '@/components/Navbar';
 
 // Créneaux disponibles : 14h00 → 17h30, toutes les 30 min
 const TIME_SLOTS = ['14:00', '14:30', '15:00', '15:30', '16:00', '16:30', '17:00', '17:30'];
@@ -90,9 +91,11 @@ export default function AppointmentPage() {
   };
 
   return (
-    <main className="min-h-screen p-8 bg-gray-50 text-black flex items-center justify-center">
-      <div className="bg-white p-8 rounded-lg shadow-lg w-full max-w-lg border-t-4 border-blue-600">
-        <h1 className="text-2xl font-bold mb-2 text-center text-blue-900">Prendre Rendez-vous</h1>
+    <>
+    <Navbar theme="light" />
+    <main className="min-h-screen px-6 pt-32 pb-16 bg-gray-50 text-black flex items-center justify-center">
+      <div className="bg-white p-8 rounded-lg shadow-lg w-full max-w-lg border-t-4 border-black">
+        <h1 className="text-2xl font-bold mb-2 text-center text-black">Prendre Rendez-vous</h1>
         <p className="text-center text-sm text-gray-400 mb-6">Mardi & Jeudi · 14h00 – 18h00 · Visioconférence · Créneaux de 30 min</p>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
@@ -114,7 +117,7 @@ export default function AppointmentPage() {
           </div>
 
           {/* Type fixe : visio */}
-          <div className="bg-blue-50 border border-blue-200 rounded px-4 py-2 text-sm text-blue-700 font-medium">
+          <div className="bg-gray-50 border border-gray-200 rounded px-4 py-2 text-sm text-black font-medium">
             📹 Tous les rendez-vous se déroulent en visioconférence.
           </div>
 
@@ -158,8 +161,8 @@ export default function AppointmentPage() {
                         blocked
                           ? 'bg-gray-100 text-gray-300 border-gray-200 cursor-not-allowed line-through'
                           : selected
-                          ? 'bg-blue-600 text-white border-blue-600'
-                          : 'bg-white text-gray-700 border-gray-300 hover:border-blue-400'
+                          ? 'bg-black text-white border-black'
+                          : 'bg-white text-gray-700 border-gray-300 hover:border-black'
                       }`}
                     >
                       {time}
@@ -186,7 +189,7 @@ export default function AppointmentPage() {
             type="submit"
             disabled={loading || !selectedTime}
             className={`mt-2 w-full text-white p-3 rounded font-bold transition ${
-              loading || !selectedTime ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'
+              loading || !selectedTime ? 'bg-gray-400 cursor-not-allowed' : 'bg-black hover:bg-violet-deep'
             }`}
           >
             {loading ? 'Envoi en cours...' : 'Envoyer la demande'}
@@ -202,5 +205,6 @@ export default function AppointmentPage() {
         </form>
       </div>
     </main>
+    </>
   );
 }

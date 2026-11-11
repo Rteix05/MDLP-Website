@@ -1,192 +1,192 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import Cookies from 'js-cookie';
+import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Check, X, Clock, Users, BookOpen, CreditCard, ArrowLeft, ChevronRight } from 'lucide-react';
+import { CalendarCheck, CalendarClock, Check, Clock, Euro, Mail, MessageSquare, Phone, Users, X } from 'lucide-react';
+import { adminFetch, ApiError } from '@/lib/adminApi';
+import { usePending } from '@/components/admin/AdminShell';
+import { Button, EmptyState, PageHeader, SkeletonRows, StatCard, useConfirm, useToast } from '@/components/admin/ui';
 
 interface Appointment {
   id: number;
   subject: string;
   date: string;
-  status: string;
+  status: 'PENDING' | 'CONFIRMED' | 'CANCELLED';
   message: string;
   pastor: string;
-  user: {
-    firstname: string;
-    lastname: string;
-    email: string;
-    phone: string;
-  };
+  user: { firstname: string; lastname: string; email: string; phone: string } | null;
 }
 
-export default function AdminPage() {
-  const [appointments, setAppointments] = useState<Appointment[]>([]);
+const formatDate = (iso: string) =>
+  new Date(iso).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' });
+
+const euros = (n: number) => n.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' });
+
+function Person({ rdv }: { rdv: Appointment }) {
+  if (!rdv.user) return <span className="text-gray-400">Compte supprimé</span>;
+  return (
+    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-gray-600">
+      <span className="font-semibold text-gray-900">{rdv.user.firstname} {rdv.user.lastname}</span>
+      <a href={`mailto:${rdv.user.email}`} className="inline-flex items-center gap-1 hover:text-gray-900"><Mail size={14} /> {rdv.user.email}</a>
+      {rdv.user.phone && <a href={`tel:${rdv.user.phone}`} className="inline-flex items-center gap-1 hover:text-gray-900"><Phone size={14} /> {rdv.user.phone}</a>}
+    </div>
+  );
+}
+
+export default function AdminOverviewPage() {
   const router = useRouter();
-  const token = Cookies.get('token');
-  const API = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
+  const toast = useToast();
+  const confirm = useConfirm();
+  const { refreshPending } = usePending();
 
-  const fetchAppointments = () => {
-    fetch(`${API}/api/admin/appointments`, {
-      headers: { 'Authorization': `Bearer ${token}` }
-    })
-    .then(res => {
-      if (res.status === 403) throw new Error("Accès refusé");
-      return res.json();
-    })
-    .then(data => { if (Array.isArray(data)) setAppointments(data); })
-    .catch(() => router.push('/dashboard'));
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [stats, setStats] = useState<{ userCount: number; totalRevenue: number } | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [busyId, setBusyId] = useState<number | null>(null);
+
+  const load = useCallback(async () => {
+    try {
+      const [list, s] = await Promise.all([
+        adminFetch<Appointment[]>('/api/admin/appointments'),
+        adminFetch<{ userCount: number; totalRevenue: number }>('/api/admin/stats'),
+      ]);
+      setAppointments(Array.isArray(list) ? list : []);
+      setStats(s);
+    } catch (e) {
+      if (e instanceof ApiError && e.status === 403) router.push('/dashboard');
+      else toast('error', 'Impossible de charger les données.');
+    } finally {
+      setLoading(false);
+    }
+  }, [router, toast]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const updateStatus = async (rdv: Appointment, status: 'CONFIRMED' | 'CANCELLED') => {
+    if (status === 'CANCELLED') {
+      const ok = await confirm({
+        title: 'Refuser ce rendez-vous ?',
+        message: `${rdv.user?.firstname ?? 'La personne'} recevra un email l'informant que sa demande du ${formatDate(rdv.date)} est refusée.`,
+        confirmLabel: 'Refuser',
+        danger: true,
+      });
+      if (!ok) return;
+    }
+    setBusyId(rdv.id);
+    try {
+      await adminFetch(`/api/admin/appointments/${rdv.id}/status`, { method: 'PATCH', body: JSON.stringify({ status }) });
+      setAppointments(list => list.map(a => (a.id === rdv.id ? { ...a, status } : a)));
+      refreshPending();
+      toast('success', status === 'CONFIRMED' ? 'Rendez-vous confirmé, un email a été envoyé.' : 'Rendez-vous refusé, un email a été envoyé.');
+    } catch (e) {
+      toast('error', e instanceof Error ? e.message : 'Erreur lors de la mise à jour.');
+    } finally {
+      setBusyId(null);
+    }
   };
 
-  useEffect(() => { fetchAppointments(); }, []);
-
-  const updateStatus = async (id: number, newStatus: string) => {
-    await fetch(`${API}/api/admin/appointments/${id}/status`, {
-      method: 'PATCH',
-      headers: { 
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}` 
-      },
-      body: JSON.stringify({ status: newStatus })
-    });
-    fetchAppointments();
-  };
-
-  const pending = appointments.filter(a => a.status === 'PENDING');
-  const handled = appointments.filter(a => a.status !== 'PENDING');
-
-  const navItems = [
-    { label: 'Utilisateurs', icon: <Users size={18} />, path: '/admin/users', color: 'bg-blue-600 hover:bg-blue-700' },
-    { label: 'Cours', icon: <BookOpen size={18} />, path: '/admin/courses', color: 'bg-amber-600 hover:bg-amber-700' },
-    { label: 'Paiements', icon: <CreditCard size={18} />, path: '/admin/payments', color: 'bg-green-600 hover:bg-green-700' },
-  ];
+  const now = Date.now();
+  const pending = appointments.filter(a => a.status === 'PENDING').sort((a, b) => +new Date(a.date) - +new Date(b.date));
+  const upcoming = appointments.filter(a => a.status === 'CONFIRMED' && +new Date(a.date) >= now).sort((a, b) => +new Date(a.date) - +new Date(b.date));
+  const history = appointments.filter(a => a.status !== 'PENDING' && !(a.status === 'CONFIRMED' && +new Date(a.date) >= now));
 
   return (
-    <main className="min-h-screen bg-gray-50 p-6 md:p-8 font-sans text-gray-900">
-      <div className="max-w-6xl mx-auto">
+    <>
+      <PageHeader title="Vue d'ensemble" subtitle="Rendez-vous, membres et dons de l'église en un coup d'œil." />
 
-        {/* HEADER */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
-          <div>
-            <h1 className="text-3xl font-black text-gray-900">🛡️ Administration</h1>
-            <p className="text-gray-500 text-sm mt-1">Espace Pasteur — Gestion de l'église</p>
-          </div>
-          <button onClick={() => router.push('/dashboard')} className="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-800 transition">
-            <ArrowLeft size={16} /> Mon tableau de bord
-          </button>
-        </div>
+      <section className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-10" aria-label="Chiffres clés">
+        <StatCard label="En attente" value={pending.length} hint="demandes à traiter" icon={<Clock size={20} />} tone="amber" loading={loading} />
+        <StatCard label="À venir" value={upcoming.length} hint="rendez-vous confirmés" icon={<CalendarCheck size={20} />} tone="green" loading={loading} />
+        <StatCard label="Membres" value={stats?.userCount ?? 0} hint="comptes inscrits" icon={<Users size={20} />} tone="blue" loading={loading} />
+        <StatCard label="Dons reçus" value={euros(stats?.totalRevenue ?? 0)} hint="depuis l'ouverture" icon={<Euro size={20} />} loading={loading} />
+      </section>
 
-        {/* NAVIGATION RAPIDE */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-10">
-          {navItems.map(item => (
-            <button
-              key={item.path}
-              onClick={() => router.push(item.path)}
-              className={`${item.color} text-white px-4 py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 shadow-sm transition active:scale-[0.98]`}
-            >
-              {item.icon} {item.label}
-            </button>
-          ))}
-        </div>
+      {/* DEMANDES EN ATTENTE */}
+      <section className="mb-10" aria-labelledby="pending-title">
+        <h2 id="pending-title" className="text-lg font-black text-gray-900 mb-4 flex items-center gap-2">
+          Demandes à traiter
+          {pending.length > 0 && <span className="text-xs font-black bg-amber-100 text-amber-700 rounded-full px-2 py-0.5">{pending.length}</span>}
+        </h2>
 
-        {/* RDV EN ATTENTE */}
-        <section className="mb-10">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="flex items-center gap-2 bg-yellow-100 text-yellow-700 px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider">
-              <Clock size={14} /> En attente
-            </div>
-            <span className="text-2xl font-black">{pending.length}</span>
-            <span className="text-gray-400 text-sm font-medium">rendez-vous à traiter</span>
-          </div>
-
-          {pending.length > 0 ? (
-            <div className="space-y-3">
-              {pending.map(rdv => (
-                <div key={rdv.id} className="bg-white rounded-xl border-l-4 border-yellow-400 shadow-sm p-5 flex flex-col md:flex-row md:items-center gap-4">
-                  
-                  {/* Infos */}
-                  <div className="flex-grow min-w-0 space-y-1">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <h3 className="font-bold text-lg text-gray-900">{rdv.subject}</h3>
-                      {rdv.pastor && (
-                        <span className="text-xs bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full font-semibold">
-                          avec {rdv.pastor}
-                        </span>
-                      )}
-                    </div>
-                    <div className="flex flex-wrap gap-x-6 gap-y-1 text-sm text-gray-500">
-                      <span>👤 {rdv.user.firstname} {rdv.user.lastname}</span>
-                      <span>📅 {new Date(rdv.date).toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>
-                      {rdv.user.phone && <span>📞 {rdv.user.phone}</span>}
-                    </div>
-                    {rdv.message && (
-                      <p className="text-sm text-gray-400 italic truncate">💬 &quot;{rdv.message}&quot;</p>
+        {loading ? <SkeletonRows rows={2} /> : pending.length === 0 ? (
+          <EmptyState icon={<Check size={20} />} title="Aucune demande en attente" text="Les nouvelles demandes de rendez-vous apparaîtront ici." />
+        ) : (
+          <ul className="space-y-3">
+            {pending.map(rdv => (
+              <li key={rdv.id} className="bg-white rounded-2xl border border-gray-200 p-5 flex flex-col md:flex-row md:items-start gap-4">
+                <div className="flex-1 min-w-0 space-y-2">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h3 className="font-bold text-gray-900">{rdv.subject}</h3>
+                    {rdv.pastor && rdv.pastor !== 'Non spécifié' && (
+                      <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full font-semibold">avec {rdv.pastor}</span>
                     )}
                   </div>
-
-                  {/* Actions */}
-                  <div className="flex gap-2 shrink-0">
-                    <button
-                      onClick={() => updateStatus(rdv.id, 'CONFIRMED')}
-                      className="flex items-center gap-1.5 bg-green-600 hover:bg-green-700 text-white px-4 py-2.5 rounded-lg font-bold text-xs uppercase tracking-wider transition"
-                    >
-                      <Check size={14} /> Valider
-                    </button>
-                    <button
-                      onClick={() => updateStatus(rdv.id, 'CANCELLED')}
-                      className="flex items-center gap-1.5 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 px-4 py-2.5 rounded-lg font-bold text-xs uppercase tracking-wider transition"
-                    >
-                      <X size={14} /> Refuser
-                    </button>
-                  </div>
+                  <p className="text-sm font-semibold text-amber-700 flex items-center gap-1.5 first-letter:uppercase">
+                    <CalendarClock size={15} /> {formatDate(rdv.date)}
+                  </p>
+                  <Person rdv={rdv} />
+                  {rdv.message && (
+                    <p className="text-sm text-gray-600 bg-gray-50 rounded-xl px-3 py-2 flex gap-2 whitespace-pre-line">
+                      <MessageSquare size={15} className="shrink-0 mt-0.5 text-gray-400" /> {rdv.message}
+                    </p>
+                  )}
                 </div>
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-10 bg-white rounded-xl border border-dashed border-gray-200">
-              <p className="text-gray-400 font-bold text-sm uppercase tracking-widest">Aucun rendez-vous en attente 🎉</p>
-            </div>
-          )}
-        </section>
-
-        {/* RDV TRAITÉS (résumé) */}
-        <section>
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-bold text-gray-700">Rendez-vous traités</h2>
-            <button
-              onClick={() => router.push('/dashboard')}
-              className="text-xs font-bold text-gray-400 hover:text-gray-700 flex items-center gap-1 transition uppercase tracking-wider"
-            >
-              Voir tout <ChevronRight size={14} />
-            </button>
-          </div>
-
-          {handled.length > 0 ? (
-            <div className="space-y-2">
-              {handled.slice(0, 5).map(rdv => (
-                <div key={rdv.id} className="bg-white rounded-lg border border-gray-100 p-4 flex items-center justify-between gap-4">
-                  <div className="min-w-0">
-                    <span className="font-semibold text-gray-800">{rdv.user.firstname} {rdv.user.lastname}</span>
-                    <span className="text-gray-400 mx-2">—</span>
-                    <span className="text-gray-500 text-sm">{rdv.subject}</span>
-                  </div>
-                  <span className={`shrink-0 text-xs px-3 py-1 rounded-full font-bold ${
-                    rdv.status === 'CONFIRMED' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-600'
-                  }`}>
-                    {rdv.status === 'CONFIRMED' ? '✅ Validé' : '❌ Refusé'}
-                  </span>
+                <div className="flex gap-2 shrink-0">
+                  <Button variant="success" disabled={busyId === rdv.id} onClick={() => updateStatus(rdv, 'CONFIRMED')}>
+                    <Check size={16} /> Confirmer
+                  </Button>
+                  <Button variant="danger-soft" disabled={busyId === rdv.id} onClick={() => updateStatus(rdv, 'CANCELLED')}>
+                    <X size={16} /> Refuser
+                  </Button>
                 </div>
-              ))}
-              {handled.length > 5 && (
-                <p className="text-center text-xs text-gray-400 pt-2">+ {handled.length - 5} autres rendez-vous</p>
-              )}
-            </div>
-          ) : (
-            <p className="text-gray-400 text-sm">Aucun rendez-vous traité.</p>
-          )}
-        </section>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
 
-      </div>
-    </main>
+      {/* À VENIR */}
+      <section className="mb-10" aria-labelledby="upcoming-title">
+        <h2 id="upcoming-title" className="text-lg font-black text-gray-900 mb-4">Rendez-vous à venir</h2>
+        {loading ? <SkeletonRows rows={2} /> : upcoming.length === 0 ? (
+          <EmptyState icon={<CalendarCheck size={20} />} title="Aucun rendez-vous confirmé à venir" />
+        ) : (
+          <ul className="bg-white rounded-2xl border border-gray-200 divide-y divide-gray-100">
+            {upcoming.map(rdv => (
+              <li key={rdv.id} className="p-4 sm:px-5 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-6">
+                <p className="text-sm font-bold text-gray-900 sm:w-56 shrink-0 first-letter:uppercase">{formatDate(rdv.date)}</p>
+                <div className="min-w-0">
+                  <p className="text-sm text-gray-500 mb-1">{rdv.subject}</p>
+                  <Person rdv={rdv} />
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      {/* HISTORIQUE */}
+      {!loading && history.length > 0 && (
+        <section aria-labelledby="history-title">
+          <h2 id="history-title" className="text-lg font-black text-gray-900 mb-4">Historique</h2>
+          <ul className="bg-white rounded-2xl border border-gray-200 divide-y divide-gray-100">
+            {history.slice(0, 10).map(rdv => (
+              <li key={rdv.id} className="px-5 py-3 flex items-center justify-between gap-4 text-sm">
+                <div className="min-w-0 truncate">
+                  <span className="font-semibold text-gray-800">{rdv.user ? `${rdv.user.firstname} ${rdv.user.lastname}` : 'Compte supprimé'}</span>
+                  <span className="text-gray-400"> · {rdv.subject} · {new Date(rdv.date).toLocaleDateString('fr-FR')}</span>
+                </div>
+                <span className={`shrink-0 text-xs px-2.5 py-1 rounded-full font-bold ${
+                  rdv.status === 'CONFIRMED' ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-600'
+                }`}>
+                  {rdv.status === 'CONFIRMED' ? 'Effectué' : 'Refusé'}
+                </span>
+              </li>
+            ))}
+          </ul>
+          {history.length > 10 && <p className="text-center text-xs text-gray-400 mt-3">+ {history.length - 10} autres rendez-vous plus anciens</p>}
+        </section>
+      )}
+    </>
   );
 }

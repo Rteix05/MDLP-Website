@@ -49,6 +49,10 @@ class AdminUserController extends AbstractController
         if ($user === $this->getUser()) {
             return $this->json(['message' => 'Impossible de se supprimer soi-même'], 400);
         }
+        // Un administrateur ne peut pas être supprimé depuis le back-office
+        if (in_array('ROLE_ADMIN', $user->getRoles(), true)) {
+            return $this->json(['message' => 'Impossible de supprimer un administrateur'], 403);
+        }
 
         $email = $user->getEmail();
         $firstname = $user->getFirstname();
@@ -77,15 +81,12 @@ class AdminUserController extends AbstractController
     #[Route('/{id}/role', name: 'toggle_role', methods: ['PATCH'])]
     public function toggleRole(User $user, EntityManagerInterface $em): JsonResponse
     {
-        $roles = $user->getRoles();
-
-        if (in_array('ROLE_ADMIN', $roles)) {
-            // S'il est admin, on le rétrograde simple user
-            $user->setRoles(['ROLE_USER']);
-        } else {
-            // S'il est user, on le promeut admin
-            $user->setRoles(['ROLE_ADMIN', 'ROLE_USER']);
+        // Un administrateur ne peut pas être rétrogradé, ni par un autre admin ni par lui-même
+        if (in_array('ROLE_ADMIN', $user->getRoles(), true)) {
+            return $this->json(['message' => 'Impossible de rétrograder un administrateur'], 403);
         }
+
+        $user->setRoles(['ROLE_ADMIN', 'ROLE_USER']);
 
         $em->flush();
         $this->audit->log('USER_ROLE_CHANGED', [

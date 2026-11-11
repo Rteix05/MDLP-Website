@@ -25,6 +25,11 @@ framework:
             policy: sliding_window
             limit: 3
             interval: '1 hour'
+        # Formulaire de contact : 5 messages par heure par IP
+        contact_form:
+            policy: sliding_window
+            limit: 5
+            interval: '1 hour'
 
 when@test:
     framework:

@@ -41,7 +41,7 @@ security:
         - { path: ^/api/reset-password, roles: PUBLIC_ACCESS }
         - { path: ^/api/register, roles: PUBLIC_ACCESS }
         - { path: ^/api/login, roles: PUBLIC_ACCESS }
-        - { path: ^/api/events, roles: PUBLIC_ACCESS }
+        - { path: ^/api/events, methods: [GET], roles: PUBLIC_ACCESS }
         - { path: ^/api/contact, roles: PUBLIC_ACCESS }
         - { path: ^/api/payment/stripe-webhook, roles: PUBLIC_ACCESS }
         - { path: ^/api/payment/stripe-session, roles: PUBLIC_ACCESS }

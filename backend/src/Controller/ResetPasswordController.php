@@ -3,6 +3,7 @@
 namespace App\Controller;
 
 use App\Entity\User;
+use App\Security\PasswordPolicy;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bridge\Twig\Mime\TemplatedEmail;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -80,8 +81,11 @@ class ResetPasswordController extends AbstractController
         $token = $data['token'] ?? null;
         $password = $data['password'] ?? null;
 
-        if (!$token || !$password) {
+        if (!is_string($token) || !$token || !$password) {
             return $this->json(['message' => 'Données invalides'], 400);
+        }
+        if ($passwordError = PasswordPolicy::validate($password)) {
+            return $this->json(['message' => $passwordError], 400);
         }
 
         // Chercher l'utilisateur avec ce token

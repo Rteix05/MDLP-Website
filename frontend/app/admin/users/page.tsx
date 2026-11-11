@@ -1,212 +1,189 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Cookies from 'js-cookie';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
-import { ArrowLeft, Trash2, Shield, User as UserIcon, ArrowDown, ArrowUp, Users } from 'lucide-react';
+import { ArrowUp, Search, Shield, Trash2, User as UserIcon, Users } from 'lucide-react';
+import { adminFetch, ApiError } from '@/lib/adminApi';
+import { Button, EmptyState, PageHeader, SkeletonRows, useConfirm, useToast } from '@/components/admin/ui';
+
+interface AdminUser {
+  id: number;
+  email: string;
+  firstname: string;
+  lastname: string;
+  roles: string[];
+}
+
+type RoleFilter = 'all' | 'admin' | 'member';
+
+/** Email de l'admin connecté, lu dans le jeton (sert à masquer les actions sur soi-même) */
+function currentUserEmail(): string | null {
+  const token = Cookies.get('token');
+  if (!token) return null;
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
+    return payload.username || payload.email || null;
+  } catch { return null; }
+}
 
 export default function UserManagementPage() {
-  const [users, setUsers] = useState<any[]>([]);
   const router = useRouter();
-  const token = Cookies.get('token');
-  const API = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
+  const toast = useToast();
+  const confirm = useConfirm();
 
-  // Décoder le JWT pour récupérer l'email de l'admin connecté
-  const getCurrentUserEmail = (): string | null => {
-    if (!token) return null;
-    try {
-      const payload = JSON.parse(atob(token.split('.')[1]));
-      return payload.username || payload.email || null;
-    } catch { return null; }
-  };
-  const currentUserEmail = getCurrentUserEmail();
+  const [users, setUsers] = useState<AdminUser[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
+  const [roleFilter, setRoleFilter] = useState<RoleFilter>('all');
+  const [busyId, setBusyId] = useState<number | null>(null);
+  const [me, setMe] = useState<string | null>(null);
 
-  // Charger les utilisateurs
   useEffect(() => {
-    fetch(`${API}/api/admin/users`, {
-      headers: { 'Authorization': `Bearer ${token}` }
-    })
-    .then(res => {
-        if (!res.ok) throw new Error('Accès interdit');
-        return res.json();
-    })
-    .then(data => setUsers(data))
-    .catch(() => router.push('/dashboard')); // Si erreur, retour dashboard
-  }, [API, router, token]);
+    setMe(currentUserEmail());
+    adminFetch<AdminUser[]>('/api/admin/users?limit=100')
+      .then(data => setUsers(Array.isArray(data) ? data : []))
+      .catch(e => {
+        if (e instanceof ApiError && e.status === 403) router.push('/dashboard');
+        else toast('error', 'Impossible de charger les utilisateurs.');
+      })
+      .finally(() => setLoading(false));
+  }, [router, toast]);
 
-  // Fonction Bannir
-  const handleDelete = async (id: number) => {
-    const target = users.find(u => u.id === id);
-    if (!target) return;
+  const isAdmin = (u: AdminUser) => u.roles?.includes('ROLE_ADMIN');
+  const adminCount = users.filter(isAdmin).length;
 
-    const first = confirm(`Supprimer le compte de ${target.firstname} ${target.lastname} ?`);
-    if (!first) return;
-    const second = confirm(`⚠️ Confirmation finale : cette action est irréversible. ${target.firstname} ${target.lastname} recevra un email l'informant de la suppression. Continuer ?`);
-    if (!second) return;
-
-    await fetch(`${API}/api/admin/users/${id}`, {
-      method: 'DELETE',
-      headers: { 'Authorization': `Bearer ${token}` }
+  const visible = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return users.filter(u => {
+      if (roleFilter === 'admin' && !isAdmin(u)) return false;
+      if (roleFilter === 'member' && isAdmin(u)) return false;
+      if (!q) return true;
+      return `${u.firstname} ${u.lastname} ${u.email}`.toLowerCase().includes(q);
     });
+  }, [users, search, roleFilter]);
 
-    setUsers(users.filter(u => u.id !== id));
+  const handlePromote = async (user: AdminUser) => {
+    const name = `${user.firstname} ${user.lastname}`;
+    if (!await confirm({ title: `Promouvoir ${name} administrateur ?`, message: 'Cette personne aura accès à tout le back-office : membres, dons, rendez-vous et contenus.', confirmLabel: 'Continuer' })) return;
+    if (!await confirm({ title: 'Confirmation finale', message: `Un administrateur ne peut plus être rétrogradé ni supprimé depuis le back-office. Promouvoir ${name} ?`, confirmLabel: 'Promouvoir', danger: true })) return;
+
+    setBusyId(user.id);
+    try {
+      const data = await adminFetch<{ roles: string[] }>(`/api/admin/users/${user.id}/role`, { method: 'PATCH' });
+      setUsers(list => list.map(u => (u.id === user.id ? { ...u, roles: data.roles } : u)));
+      toast('success', `${name} est maintenant administrateur.`);
+    } catch (e) {
+      toast('error', e instanceof Error ? e.message : 'Erreur lors du changement de rôle.');
+    } finally {
+      setBusyId(null);
+    }
   };
 
-  // Fonction Promouvoir / Rétrograder
-  const handleToggleRole = async (id: number) => {
-    const target = users.find(u => u.id === id);
-    if (!target) return;
+  const handleDelete = async (user: AdminUser) => {
+    const name = `${user.firstname} ${user.lastname}`;
+    if (!await confirm({ title: `Supprimer le compte de ${name} ?`, message: 'Cette personne ne pourra plus se connecter au site.', confirmLabel: 'Continuer', danger: true })) return;
+    if (!await confirm({ title: 'Confirmation finale', message: `Cette action est irréversible. ${name} recevra un email l'informant de la suppression de son compte.`, confirmLabel: 'Supprimer définitivement', danger: true })) return;
 
-    const targetIsAdmin = target.roles?.includes('ROLE_ADMIN');
-
-    // Bloquer toute rétrogradation d'admin (soi-même ou un autre)
-    if (targetIsAdmin) {
-      alert('Il est impossible de rétrograder un compte administrateur.');
-      return;
+    setBusyId(user.id);
+    try {
+      await adminFetch(`/api/admin/users/${user.id}`, { method: 'DELETE' });
+      setUsers(list => list.filter(u => u.id !== user.id));
+      toast('success', `Le compte de ${name} a été supprimé.`);
+    } catch (e) {
+      toast('error', e instanceof Error ? e.message : 'Erreur lors de la suppression.');
+    } finally {
+      setBusyId(null);
     }
-
-    // Double confirmation pour la promotion
-    if (!targetIsAdmin) {
-      const first = confirm(`Promouvoir ${target.firstname} ${target.lastname} en Admin ?`);
-      if (!first) return;
-      const second = confirm(`⚠️ Confirmation finale : ${target.firstname} ${target.lastname} aura accès à TOUTES les données du site. Continuer ?`);
-      if (!second) return;
-    }
-
-    const res = await fetch(`${API}/api/admin/users/${id}/role`, {
-      method: 'PATCH',
-      headers: { 'Authorization': `Bearer ${token}` }
-    });
-    const data = await res.json();
-    setUsers(users.map(u => u.id === id ? { ...u, roles: data.roles } : u));
   };
+
+  const filters: { key: RoleFilter; label: string; count: number }[] = [
+    { key: 'all', label: 'Tous', count: users.length },
+    { key: 'admin', label: 'Administrateurs', count: adminCount },
+    { key: 'member', label: 'Fidèles', count: users.length - adminCount },
+  ];
 
   return (
-    <main className="min-h-screen bg-[#FAFAFA] p-4 md:p-8 lg:p-12 font-sans text-gray-900">
-      <div className="max-w-7xl mx-auto space-y-8 md:space-y-12">
-        
-        {/* ================= EN-TÊTE ================= */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-6">
-          <div>
-            <Link href="/dashboard" className="inline-flex items-center gap-2 text-[10px] md:text-xs font-bold uppercase tracking-widest text-gray-400 hover:text-black transition mb-6 md:mb-8">
-                <ArrowLeft size={14} /> Retour au Dashboard
-            </Link>
-            <div className="flex items-center gap-3 md:gap-4 mb-2">
-                <div className="w-10 h-10 md:w-12 md:h-12 bg-black rounded-full flex items-center justify-center text-white shadow-lg">
-                    <Users size={20} />
-                </div>
-                <h1 className="text-3xl md:text-5xl font-black tracking-tighter uppercase text-gray-900 leading-none">
-                    La Communauté.
-                </h1>
-            </div>
-            <p className="text-gray-500 text-xs md:text-sm font-medium mt-3">Gérez les accès, les rôles et les membres de l'église.</p>
-          </div>
+    <>
+      <PageHeader title="Utilisateurs" subtitle="Les membres inscrits sur le site et leurs droits d'accès." />
+
+      <div className="flex flex-col md:flex-row gap-3 mb-6">
+        <label className="flex items-center bg-white border border-gray-200 rounded-xl px-4 py-2.5 flex-1 focus-within:border-gray-900 transition">
+          <Search size={16} className="text-gray-400 mr-3" />
+          <span className="sr-only">Rechercher un utilisateur</span>
+          <input
+            type="search"
+            placeholder="Rechercher par nom ou email…"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            className="bg-transparent outline-none text-sm w-full"
+          />
+        </label>
+        <div className="flex gap-1 bg-white border border-gray-200 rounded-xl p-1" role="tablist" aria-label="Filtrer par rôle">
+          {filters.map(f => (
+            <button
+              key={f.key}
+              role="tab"
+              aria-selected={roleFilter === f.key}
+              onClick={() => setRoleFilter(f.key)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition whitespace-nowrap ${roleFilter === f.key ? 'bg-gray-900 text-white' : 'text-gray-500 hover:text-gray-900'}`}
+            >
+              {f.label} <span className="opacity-60">{f.count}</span>
+            </button>
+          ))}
         </div>
-
-        {/* ================= TABLEAU DES UTILISATEURS ================= */}
-        <div className="bg-white rounded-xl md:rounded-2xl border border-gray-100 shadow-sm overflow-hidden flex flex-col">
-            <div className="p-4 md:px-8 md:py-6 border-b border-gray-100 bg-gray-50/50 flex justify-between items-center">
-                <h3 className="font-black text-gray-900 uppercase tracking-widest text-[10px] md:text-sm">Base de données ({users.length})</h3>
-            </div>
-
-            {/* Wrapper pour le scroll horizontal sur mobile */}
-            <div className="overflow-x-auto w-full custom-scrollbar">
-                <table className="w-full text-left min-w-[800px]">
-                    <thead className="bg-white text-[9px] md:text-[10px] font-bold text-gray-400 uppercase tracking-widest border-b border-gray-100">
-                        <tr>
-                            <th className="px-6 md:px-8 py-5 whitespace-nowrap">Utilisateur</th>
-                            <th className="px-6 md:px-8 py-5 whitespace-nowrap">Email</th>
-                            <th className="px-6 md:px-8 py-5 whitespace-nowrap">Niveau d'accès</th>
-                            <th className="px-6 md:px-8 py-5 text-right whitespace-nowrap">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody className="text-xs md:text-sm font-medium text-gray-600 divide-y divide-gray-50">
-                        {users.length === 0 ? (
-                            <tr>
-                                <td colSpan={4} className="px-6 md:px-8 py-16 text-center text-gray-400 text-[10px] uppercase tracking-widest">
-                                    Aucun utilisateur trouvé.
-                                </td>
-                            </tr>
-                        ) : (
-                            users.map((user) => {
-                                const isAdmin = user.roles?.includes('ROLE_ADMIN');
-                                return (
-                                    <tr key={user.id} className="hover:bg-gray-50 transition group">
-                                        
-                                        {/* NOM */}
-                                        <td className="px-6 md:px-8 py-4 whitespace-nowrap">
-                                            <div className="flex items-center gap-3">
-                                                <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs ${isAdmin ? 'bg-black text-white' : 'bg-gray-100 text-gray-600'}`}>
-                                                    {user.firstname.charAt(0)}{user.lastname.charAt(0)}
-                                                </div>
-                                                <span className="font-bold text-gray-900 uppercase tracking-wide text-xs">
-                                                    {user.firstname} {user.lastname}
-                                                </span>
-                                            </div>
-                                        </td>
-
-                                        {/* EMAIL */}
-                                        <td className="px-6 md:px-8 py-4 text-gray-500 whitespace-nowrap">
-                                            {user.email}
-                                        </td>
-
-                                        {/* RÔLE (BADGE) */}
-                                        <td className="px-6 md:px-8 py-4 whitespace-nowrap">
-                                            {isAdmin ? (
-                                                <span className="px-3 py-1.5 bg-black text-white border border-black text-[9px] font-bold uppercase tracking-widest flex items-center gap-1.5 w-fit rounded-md shadow-sm">
-                                                    <Shield size={12} /> Pasteur / Admin
-                                                </span>
-                                            ) : (
-                                                <span className="px-3 py-1.5 bg-white border border-gray-200 text-gray-600 text-[9px] font-bold uppercase tracking-widest flex items-center gap-1.5 w-fit rounded-md shadow-sm">
-                                                    <UserIcon size={12} /> Fidèle
-                                                </span>
-                                            )}
-                                        </td>
-
-                                        {/* ACTIONS */}
-                                        <td className="px-6 md:px-8 py-4 whitespace-nowrap text-right">
-                                            <div className="flex items-center justify-end gap-2">
-                                                
-                                                {/* Bouton Rôle */}
-                                                <button 
-                                                    onClick={() => handleToggleRole(user.id)}
-                                                    disabled={isAdmin}
-                                                    title={isAdmin ? 'Impossible de rétrograder un administrateur' : ''}
-                                                    className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-[9px] font-bold uppercase tracking-wider transition border ${
-                                                      isAdmin
-                                                        ? 'bg-gray-50 text-gray-300 border-gray-100 cursor-not-allowed'
-                                                        : 'bg-gray-50 text-gray-600 hover:bg-gray-200 hover:text-black border-gray-100'
-                                                    }`}
-                                                >
-                                                    {isAdmin ? (
-                                                        <><ArrowDown size={14} /> Rétrograder</>
-                                                    ) : (
-                                                        <><ArrowUp size={14} /> Promouvoir</>
-                                                    )}
-                                                </button>
-
-                                                {/* Bouton Supprimer */}
-                                                <button 
-                                                    onClick={() => handleDelete(user.id)}
-                                                    className="p-2 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition border border-transparent hover:border-red-100"
-                                                    title="Supprimer l'utilisateur"
-                                                >
-                                                    <Trash2 size={16} />
-                                                </button>
-                                                
-                                            </div>
-                                        </td>
-                                    </tr>
-                                );
-                            })
-                        )}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-
       </div>
-    </main>
+
+      {loading ? <SkeletonRows rows={5} /> : visible.length === 0 ? (
+        <EmptyState icon={<Users size={20} />} title="Aucun utilisateur trouvé" text={search ? 'Essayez un autre nom ou email.' : undefined} />
+      ) : (
+        <ul className="bg-white rounded-2xl border border-gray-200 divide-y divide-gray-100">
+          {visible.map(user => {
+            const admin = isAdmin(user);
+            const isMe = me !== null && user.email === me;
+            return (
+              <li key={user.id} className="p-4 sm:px-5 flex flex-col sm:flex-row sm:items-center gap-3">
+                <div className="flex items-center gap-3 flex-1 min-w-0">
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm shrink-0 ${admin ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-600'}`} aria-hidden="true">
+                    {user.firstname?.charAt(0)}{user.lastname?.charAt(0)}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="font-bold text-gray-900 truncate">
+                      {user.firstname} {user.lastname}
+                      {isMe && <span className="ml-2 text-xs font-semibold text-gray-400">(vous)</span>}
+                    </p>
+                    <a href={`mailto:${user.email}`} className="text-sm text-gray-500 hover:text-gray-900 truncate block">{user.email}</a>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 sm:justify-end">
+                  {admin ? (
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-gray-900 text-white text-xs font-bold"><Shield size={12} /> Administrateur</span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-gray-100 text-gray-600 text-xs font-bold"><UserIcon size={12} /> Fidèle</span>
+                  )}
+
+                  {!admin && (
+                    <>
+                      <Button variant="secondary" size="sm" disabled={busyId === user.id} onClick={() => handlePromote(user)}>
+                        <ArrowUp size={14} /> Promouvoir
+                      </Button>
+                      <Button variant="ghost" size="icon" disabled={busyId === user.id} onClick={() => handleDelete(user)}
+                        className="hover:!text-red-600 hover:!bg-red-50" aria-label={`Supprimer ${user.firstname} ${user.lastname}`} title="Supprimer le compte">
+                        <Trash2 size={16} />
+                      </Button>
+                    </>
+                  )}
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+
+      {!loading && users.length >= 100 && (
+        <p className="text-center text-xs text-gray-400 mt-4">Seuls les 100 comptes les plus récents sont affichés.</p>
+      )}
+    </>
   );
 }

@@ -2,6 +2,7 @@
 
 namespace App\Controller;
 
+use App\Security\PasswordPolicy;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -74,6 +75,9 @@ class ProfileController extends AbstractController
         // 1. Vérifier si l'ancien mot de passe est bon
         if (!$passwordHasher->isPasswordValid($user, $oldPassword)) {
             return $this->json(['message' => 'Ancien mot de passe incorrect'], 400);
+        }
+        if ($passwordError = PasswordPolicy::validate($newPassword)) {
+            return $this->json(['message' => $passwordError], 400);
         }
 
         // 2. Hacher et sauvegarder le nouveau

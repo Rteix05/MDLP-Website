@@ -1,263 +1,181 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import Cookies from 'js-cookie';
+import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, CreditCard, User as UserIcon, Search, CalendarDays, TrendingUp } from 'lucide-react';
-import Loader from '@/components/Loader';
-
-interface PaymentUser {
-  id: number;
-  firstname: string;
-  lastname: string;
-  email: string;
-}
+import { CalendarDays, CalendarRange, ChevronLeft, ChevronRight, CreditCard, Download, Filter, Search, TrendingUp } from 'lucide-react';
+import { adminFetch, API, ApiError } from '@/lib/adminApi';
+import Cookies from 'js-cookie';
+import { Button, EmptyState, PageHeader, SkeletonRows, StatCard, useToast } from '@/components/admin/ui';
 
 interface Payment {
   id: number;
   amount: number;
   date: string;
   transactionId: string | null;
-  user: PaymentUser | null;
+  user: { id: number; firstname: string; lastname: string; email: string } | null;
 }
-
-interface PeriodStats {
+interface PeriodStats { total: number; count: number; avg: number }
+interface PaymentsResponse {
+  payments: Payment[];
   total: number;
-  count: number;
-  avg: number;
+  filteredRevenue: number;
+  stats: { week: PeriodStats; month: PeriodStats; year: PeriodStats };
 }
 
-const months = [
-  { value: '', label: 'Tous les mois' },
-  { value: '1', label: 'Janvier' }, { value: '2', label: 'Février' }, { value: '3', label: 'Mars' },
-  { value: '4', label: 'Avril' }, { value: '5', label: 'Mai' }, { value: '6', label: 'Juin' },
-  { value: '7', label: 'Juillet' }, { value: '8', label: 'Août' }, { value: '9', label: 'Septembre' },
-  { value: '10', label: 'Octobre' }, { value: '11', label: 'Novembre' }, { value: '12', label: 'Décembre' },
-];
+const MONTHS = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'];
+const LIMIT = 50;
+const euros = (n: number) => n.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' });
+const countLabel = (s: PeriodStats) => `${s.count} don${s.count > 1 ? 's' : ''} · moyenne ${euros(s.avg)}`;
 
 export default function AdminPaymentsPage() {
-  const [payments, setPayments] = useState<Payment[]>([]);
-  const [total, setTotal] = useState(0);
-  const [filteredRevenue, setFilteredRevenue] = useState(0);
-  const [stats, setStats] = useState<{ week: PeriodStats; month: PeriodStats; year: PeriodStats }>({
-    week: { total: 0, count: 0, avg: 0 },
-    month: { total: 0, count: 0, avg: 0 },
-    year: { total: 0, count: 0, avg: 0 },
-  });
+  const router = useRouter();
+  const toast = useToast();
+
+  const [data, setData] = useState<PaymentsResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
-  const [filterMonth, setFilterMonth] = useState('');
-  const [filterYear, setFilterYear] = useState('');
-  const limit = 50;
-  const router = useRouter();
-  const token = Cookies.get('token');
-  const API = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
+  const [month, setMonth] = useState('');
+  const [year, setYear] = useState('');
 
-  // Générer les années disponibles (2024 → année courante)
   const currentYear = new Date().getFullYear();
-  const years = [{ value: '', label: 'Toutes les années' }];
-  for (let y = currentYear; y >= 2024; y--) {
-    years.push({ value: String(y), label: String(y) });
-  }
+  const years = Array.from({ length: currentYear - 2024 + 1 }, (_, i) => String(currentYear - i));
 
   useEffect(() => {
-    if (!token) { router.push('/login'); return; }
-
-    const params = new URLSearchParams({ page: String(page), limit: String(limit) });
-    if (filterMonth) params.set('month', filterMonth);
-    if (filterYear) params.set('year', filterYear);
-
+    const params = new URLSearchParams({ page: String(page), limit: String(LIMIT) });
+    if (month) params.set('month', month);
+    if (year) params.set('year', year);
     setLoading(true);
-    fetch(`${API}/api/payment/admin/all?${params}`, {
-      headers: { 'Authorization': `Bearer ${token}` }
-    })
-    .then(res => {
-      if (!res.ok) throw new Error('Accès interdit');
-      return res.json();
-    })
-    .then(data => {
-      setPayments(data.payments);
-      setTotal(data.total);
-      setFilteredRevenue(data.filteredRevenue);
-      setStats(data.stats);
-    })
-    .catch(() => router.push('/dashboard'))
-    .finally(() => setLoading(false));
-  }, [page, filterMonth, filterYear]);
+    adminFetch<PaymentsResponse>(`/api/payment/admin/all?${params}`)
+      .then(setData)
+      .catch(e => {
+        if (e instanceof ApiError && e.status === 403) router.push('/dashboard');
+        else toast('error', 'Impossible de charger les dons.');
+      })
+      .finally(() => setLoading(false));
+  }, [page, month, year, router, toast]);
 
-  // Reset page quand filtre change
-  const handleMonthChange = (v: string) => { setFilterMonth(v); setPage(1); };
-  const handleYearChange = (v: string) => { setFilterYear(v); setPage(1); };
+  const payments = useMemo(() => data?.payments ?? [], [data]);
+  const totalPages = Math.max(1, Math.ceil((data?.total ?? 0) / LIMIT));
+  const filterActive = Boolean(month || year);
 
-  const totalPages = Math.ceil(total / limit);
+  const visible = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return payments;
+    return payments.filter(p => {
+      const name = p.user ? `${p.user.firstname} ${p.user.lastname} ${p.user.email}` : 'anonyme';
+      return `${name} ${p.transactionId ?? ''} ${p.amount}`.toLowerCase().includes(q);
+    });
+  }, [payments, search]);
 
-  const filtered = payments.filter(p => {
-    if (!search) return true;
-    const q = search.toLowerCase();
-    const name = p.user ? `${p.user.firstname} ${p.user.lastname}`.toLowerCase() : '';
-    const email = p.user?.email?.toLowerCase() || '';
-    const txId = p.transactionId?.toLowerCase() || '';
-    return name.includes(q) || email.includes(q) || txId.includes(q) || String(p.amount).includes(q);
-  });
+  const downloadReceipt = async (p: Payment) => {
+    try {
+      const res = await fetch(`${API}/api/invoice/${p.id}`, { headers: { Authorization: `Bearer ${Cookies.get('token')}` } });
+      if (!res.ok) throw new Error();
+      const url = URL.createObjectURL(await res.blob());
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `recu-don-${p.id}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      toast('error', 'Impossible de télécharger le reçu.');
+    }
+  };
+
+  const selectClass = 'bg-white border border-gray-200 rounded-xl px-3 py-2.5 text-sm font-semibold text-gray-700 focus:border-gray-900 outline-none cursor-pointer';
 
   return (
-    <main className="min-h-screen bg-gray-50 p-6 md:p-8 font-sans text-gray-900">
-      {loading && <Loader />}
-      <div className="max-w-6xl mx-auto">
+    <>
+      <PageHeader title="Dons" subtitle="Tous les dons reçus par carte et PayPal." />
 
-        {/* HEADER */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
-          <div>
-            <h1 className="text-3xl font-black text-gray-900">💳 Gestion des Paiements</h1>
-            <p className="text-gray-500 text-sm mt-1">Liste complète des dons reçus</p>
-          </div>
-          <button onClick={() => router.push('/dashboard')} className="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-800 transition">
-            <ArrowLeft size={16} /> Mon tableau de bord
-          </button>
+      <section className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8" aria-label="Dons par période">
+        <StatCard label="Cette semaine" value={euros(data?.stats.week.total ?? 0)} hint={data ? countLabel(data.stats.week) : undefined} icon={<CalendarDays size={20} />} tone="green" loading={!data} />
+        <StatCard label="Ce mois-ci" value={euros(data?.stats.month.total ?? 0)} hint={data ? countLabel(data.stats.month) : undefined} icon={<CalendarRange size={20} />} tone="blue" loading={!data} />
+        <StatCard label="Cette année" value={euros(data?.stats.year.total ?? 0)} hint={data ? countLabel(data.stats.year) : undefined} icon={<TrendingUp size={20} />} loading={!data} />
+      </section>
+
+      <div className="flex flex-col md:flex-row gap-3 mb-4">
+        <label className="flex items-center bg-white border border-gray-200 rounded-xl px-4 py-2.5 flex-1 focus-within:border-gray-900 transition">
+          <Search size={16} className="text-gray-400 mr-3" />
+          <span className="sr-only">Rechercher un don</span>
+          <input type="search" placeholder="Rechercher par nom, email, transaction…" value={search} onChange={e => setSearch(e.target.value)} className="bg-transparent outline-none text-sm w-full" />
+        </label>
+        <div className="flex gap-2">
+          <select aria-label="Mois" value={month} onChange={e => { setMonth(e.target.value); setPage(1); }} className={selectClass}>
+            <option value="">Tous les mois</option>
+            {MONTHS.map((m, i) => <option key={m} value={String(i + 1)}>{m}</option>)}
+          </select>
+          <select aria-label="Année" value={year} onChange={e => { setYear(e.target.value); setPage(1); }} className={selectClass}>
+            <option value="">Toutes les années</option>
+            {years.map(y => <option key={y} value={y}>{y}</option>)}
+          </select>
         </div>
+      </div>
 
-        {/* STATS MOYENNES PAR PÉRIODE */}
-        <div className="mb-8">
-          <h2 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3 flex items-center gap-2">
-            <TrendingUp size={14} /> Statistiques par période
-          </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div className="bg-white border border-gray-200 rounded-xl p-6">
-              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Cette semaine</p>
-              <p className="text-2xl font-black text-gray-900">{stats.week.total.toFixed(2)} €</p>
-              <p className="text-xs text-gray-400 mt-1">{stats.week.count} don{stats.week.count > 1 ? 's' : ''} · moy. {stats.week.avg.toFixed(2)} €</p>
-            </div>
-            <div className="bg-white border border-gray-200 rounded-xl p-6">
-              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Ce mois</p>
-              <p className="text-2xl font-black text-gray-900">{stats.month.total.toFixed(2)} €</p>
-              <p className="text-xs text-gray-400 mt-1">{stats.month.count} don{stats.month.count > 1 ? 's' : ''} · moy. {stats.month.avg.toFixed(2)} €</p>
-            </div>
-            <div className="bg-white border border-gray-200 rounded-xl p-6">
-              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Cette année</p>
-              <p className="text-2xl font-black text-gray-900">{stats.year.total.toFixed(2)} €</p>
-              <p className="text-xs text-gray-400 mt-1">{stats.year.count} don{stats.year.count > 1 ? 's' : ''} · moy. {stats.year.avg.toFixed(2)} €</p>
-            </div>
-          </div>
-        </div>
+      {data && (
+        <p className="text-sm text-gray-500 mb-4 flex items-center gap-2">
+          {filterActive && <Filter size={14} />}
+          <span><strong className="text-gray-900">{data.total}</strong> don{data.total > 1 ? 's' : ''} {filterActive ? 'sur la période' : 'au total'} · <strong className="text-gray-900">{euros(data.filteredRevenue)}</strong></span>
+          {filterActive && <button onClick={() => { setMonth(''); setYear(''); setPage(1); }} className="text-gray-900 font-semibold underline underline-offset-2">Effacer les filtres</button>}
+        </p>
+      )}
 
-        {/* RÉSUMÉ FILTRÉ */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
-          <div className="bg-white border border-gray-200 rounded-xl p-6">
-            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Dons (filtre actif)</p>
-            <p className="text-3xl font-black text-gray-900">{total}</p>
-          </div>
-          <div className="bg-white border border-gray-200 rounded-xl p-6">
-            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Revenus (filtre actif)</p>
-            <p className="text-3xl font-black text-gray-900">{filteredRevenue.toFixed(2)} €</p>
-          </div>
-        </div>
-
-        {/* FILTRES + SEARCH */}
-        <div className="flex flex-col sm:flex-row gap-4 mb-6">
-          <div className="flex items-center bg-white border border-gray-200 rounded-xl px-4 py-3 flex-1 focus-within:border-gray-900 transition">
-            <Search size={16} className="text-gray-400 mr-3" />
-            <input
-              type="text"
-              placeholder="Rechercher par nom, email, transaction..."
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              className="bg-transparent border-none outline-none text-sm font-medium w-full text-gray-900 placeholder-gray-400"
-            />
-          </div>
-          <div className="flex gap-3">
-            <select
-              value={filterMonth}
-              onChange={e => handleMonthChange(e.target.value)}
-              className="bg-white border border-gray-200 rounded-xl px-4 py-3 text-sm font-bold text-gray-700 focus:border-gray-900 outline-none transition cursor-pointer"
-            >
-              {months.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
-            </select>
-            <select
-              value={filterYear}
-              onChange={e => handleYearChange(e.target.value)}
-              className="bg-white border border-gray-200 rounded-xl px-4 py-3 text-sm font-bold text-gray-700 focus:border-gray-900 outline-none transition cursor-pointer"
-            >
-              {years.map(y => <option key={y.value} value={y.value}>{y.label}</option>)}
-            </select>
-          </div>
-        </div>
-
-        {/* TABLE */}
-        <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+      {loading && !data ? <SkeletonRows rows={5} /> : visible.length === 0 ? (
+        <EmptyState icon={<CreditCard size={20} />} title="Aucun don trouvé" text={search || filterActive ? 'Modifiez la recherche ou les filtres.' : undefined} />
+      ) : (
+        <div className={`bg-white border border-gray-200 rounded-2xl overflow-hidden transition-opacity ${loading ? 'opacity-50' : ''}`}>
           <div className="overflow-x-auto">
-            <table className="w-full text-left">
-              <thead className="bg-gray-50 border-b border-gray-200">
+            <table className="w-full text-left text-sm min-w-[640px]">
+              <thead className="bg-gray-50 border-b border-gray-200 text-[11px] font-bold text-gray-500 uppercase tracking-wider">
                 <tr>
-                  <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Donateur</th>
-                  <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Email</th>
-                  <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Montant</th>
-                  <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Date</th>
-                  <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Transaction</th>
+                  <th scope="col" className="px-5 py-3">Donateur</th>
+                  <th scope="col" className="px-5 py-3 text-right">Montant</th>
+                  <th scope="col" className="px-5 py-3">Date</th>
+                  <th scope="col" className="px-5 py-3">Transaction</th>
+                  <th scope="col" className="px-5 py-3"><span className="sr-only">Reçu</span></th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {filtered.length > 0 ? filtered.map(p => (
-                  <tr key={p.id} className="hover:bg-gray-50 transition">
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center">
-                          <UserIcon size={14} className="text-gray-400" />
-                        </div>
-                        <span className="text-sm font-bold text-gray-900">
-                          {p.user ? `${p.user.firstname} ${p.user.lastname}` : 'Anonyme'}
-                        </span>
-                      </div>
+                {visible.map(p => (
+                  <tr key={p.id} className="hover:bg-gray-50/80">
+                    <td className="px-5 py-3.5">
+                      {p.user ? (
+                        <>
+                          <p className="font-bold text-gray-900">{p.user.firstname} {p.user.lastname}</p>
+                          <p className="text-xs text-gray-500">{p.user.email}</p>
+                        </>
+                      ) : <p className="font-semibold text-gray-500">Don anonyme</p>}
                     </td>
-                    <td className="px-6 py-4 text-sm text-gray-500">{p.user?.email || '—'}</td>
-                    <td className="px-6 py-4">
-                      <span className="text-sm font-black text-gray-900">{p.amount.toFixed(2)} €</span>
+                    <td className="px-5 py-3.5 text-right font-black text-gray-900 tabular-nums whitespace-nowrap">{euros(p.amount)}</td>
+                    <td className="px-5 py-3.5 text-gray-600 whitespace-nowrap">
+                      {new Date(p.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}
                     </td>
-                    <td className="px-6 py-4 text-sm text-gray-500">
-                      {new Date(p.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className="text-xs font-mono text-gray-400 bg-gray-50 px-2 py-1 rounded">
-                        {p.transactionId ? p.transactionId.substring(0, 20) + '...' : '—'}
+                    <td className="px-5 py-3.5">
+                      <span className="text-xs font-mono text-gray-500 bg-gray-100 px-2 py-1 rounded-md" title={p.transactionId ?? undefined}>
+                        {p.transactionId ? `${p.transactionId.slice(0, 18)}…` : '—'}
                       </span>
                     </td>
-                  </tr>
-                )) : (
-                  <tr>
-                    <td colSpan={5} className="px-6 py-16 text-center text-gray-400 text-sm font-bold uppercase tracking-widest">
-                      Aucun paiement trouvé
+                    <td className="px-5 py-3.5 text-right">
+                      <Button variant="ghost" size="sm" onClick={() => downloadReceipt(p)} title="Télécharger le reçu fiscal">
+                        <Download size={14} /> Reçu
+                      </Button>
                     </td>
                   </tr>
-                )}
+                ))}
               </tbody>
             </table>
           </div>
         </div>
+      )}
 
-        {/* PAGINATION */}
-        {totalPages > 1 && (
-          <div className="flex justify-center items-center gap-4 mt-8">
-            <button
-              onClick={() => setPage(p => Math.max(1, p - 1))}
-              disabled={page === 1}
-              className="px-4 py-2 bg-white border border-gray-200 rounded-lg text-xs font-bold uppercase tracking-widest disabled:opacity-30 hover:border-black transition"
-            >
-              Précédent
-            </button>
-            <span className="text-xs font-bold text-gray-500 uppercase tracking-widest">
-              Page {page} / {totalPages}
-            </span>
-            <button
-              onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-              disabled={page === totalPages}
-              className="px-4 py-2 bg-white border border-gray-200 rounded-lg text-xs font-bold uppercase tracking-widest disabled:opacity-30 hover:border-black transition"
-            >
-              Suivant
-            </button>
-          </div>
-        )}
-
-      </div>
-    </main>
+      {totalPages > 1 && (
+        <nav className="flex justify-center items-center gap-3 mt-6" aria-label="Pagination">
+          <Button variant="secondary" size="sm" onClick={() => setPage(p => p - 1)} disabled={page === 1 || loading}><ChevronLeft size={14} /> Précédent</Button>
+          <span className="text-sm font-semibold text-gray-500">Page {page} / {totalPages}</span>
+          <Button variant="secondary" size="sm" onClick={() => setPage(p => p + 1)} disabled={page === totalPages || loading}>Suivant <ChevronRight size={14} /></Button>
+        </nav>
+      )}
+    </>
   );
 }

@@ -33,7 +33,14 @@ class AppointmentController extends AbstractController
                 return $this->json(['message' => 'Date manquante'], 400);
             }
 
-            $dateObj = new \DateTimeImmutable($data['date']);
+            try {
+                $dateObj = new \DateTimeImmutable((string) $data['date']);
+            } catch (\Exception) {
+                return $this->json(['message' => 'Date invalide'], 400);
+            }
+            if ($dateObj < new \DateTimeImmutable()) {
+                return $this->json(['message' => 'Impossible de réserver un créneau passé.'], 400);
+            }
             $dayOfWeek = (int) $dateObj->format('N'); // 1=Lundi, 2=Mardi, 4=Jeudi
             $hour = (int) $dateObj->format('H');
             $minute = (int) $dateObj->format('i');
@@ -45,17 +52,22 @@ class AppointmentController extends AbstractController
                 return $this->json(['message' => 'Le créneau doit être entre 14h00 et 17h30, par tranche de 30 minutes.'], 400);
             }
 
+            // Créneau déjà confirmé pour quelqu'un d'autre
+            if ($em->getRepository(Appointment::class)->findOneBy(['date' => $dateObj, 'status' => 'CONFIRMED'])) {
+                return $this->json(['message' => 'Ce créneau est déjà réservé.'], 409);
+            }
+
             $appointment = new Appointment();
-            
-            $motif = $data['subject'] ?? 'Entretien Pastoral';
+
+            $motif = mb_substr(trim((string) ($data['subject'] ?? '')), 0, 255) ?: 'Entretien Pastoral';
             $appointment->setReason($motif);
 
-            $appointment->setPastor($data['pastor'] ?? 'Non spécifié'); 
-            $appointment->setMessage($data['message'] ?? '');
+            $appointment->setPastor(mb_substr(trim((string) ($data['pastor'] ?? '')), 0, 255) ?: 'Non spécifié');
+            $appointment->setMessage(mb_substr((string) ($data['message'] ?? ''), 0, 5000));
             $appointment->setMeetingType('visio');
             $appointment->setStatus('PENDING');
             $appointment->setUser($user);
-            $appointment->setDate(new \DateTimeImmutable($data['date']));
+            $appointment->setDate($dateObj);
 
             $em->persist($appointment);
             $em->flush();
@@ -104,7 +116,8 @@ class AppointmentController extends AbstractController
 
         } catch (\Exception $e) {
             error_log("💥 ERREUR : " . $e->getMessage());
-            return $this->json(['error' => $e->getMessage()], 500);
+            // Ne pas renvoyer le détail technique au navigateur
+            return $this->json(['error' => 'Erreur serveur, veuillez réessayer plus tard.'], 500);
         }
     }
 

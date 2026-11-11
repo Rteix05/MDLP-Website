@@ -7,6 +7,7 @@ use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\RateLimiter\RateLimiterFactory;
 use Symfony\Component\Routing\Attribute\Route;
 
 class ContactController extends AbstractController
@@ -17,8 +18,13 @@ class ContactController extends AbstractController
     ) {}
 
     #[Route('/api/contact', name: 'api_contact', methods: ['POST'])]
-    public function send(Request $request): JsonResponse
+    public function send(Request $request, RateLimiterFactory $contactFormLimiter): JsonResponse
     {
+        // Anti-spam : limite le nombre de messages par adresse IP
+        if (!$contactFormLimiter->create($request->getClientIp())->consume()->isAccepted()) {
+            return $this->json(['message' => 'Trop de messages envoyés. Veuillez réessayer plus tard.'], 429);
+        }
+
         $data = json_decode($request->getContent(), true);
 
         $name = trim($data['name'] ?? '');
