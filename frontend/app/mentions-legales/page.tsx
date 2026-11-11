@@ -67,7 +67,7 @@ export default function MentionsLegalesPage() {
       <LegalArticle id="cookies" title="5. Cookies">
         <p>
           Ce site utilise uniquement un cookie technique nécessaire à la connexion au compte. Aucun cookie publicitaire
-          ni de mesure d&apos;audience n&apos;est utilisé. Voir la{' '}
+          ni de mesure d&apos;audience n&apos;est utilisé : la fréquentation est mesurée en interne, sans cookie. Voir la{' '}
           <Link href="/politique-de-confidentialite#cookies" className={legalLinkClass}>politique de confidentialité</Link>.
         </p>
       </LegalArticle>
