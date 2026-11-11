@@ -74,7 +74,7 @@ export default function BiographiePage() {
 
         <div className="relative z-10 max-w-7xl mx-auto px-6 pt-32 pb-20 grid md:grid-cols-[1.2fr_1fr] gap-12 items-center w-full">
           <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, ease: 'easeOut' }}>
-            <p className="text-white/60 text-xs md:text-sm font-bold uppercase tracking-[0.4em] mb-6">Biographie institutionnelle</p>
+            <p className="text-gold text-xs md:text-sm font-bold uppercase tracking-[0.4em] mb-6">Biographie institutionnelle</p>
             <h1 className="text-5xl md:text-7xl lg:text-8xl font-black text-white leading-[0.9] tracking-tighter uppercase mb-8">
               Samuel <br /> Panzu.
             </h1>
@@ -104,14 +104,14 @@ export default function BiographiePage() {
       <section className="py-24 md:py-32 px-6 bg-white">
         <motion.div {...fadeUp} className="max-w-4xl mx-auto text-center">
           <h2 className="text-xs font-bold text-gray-500 uppercase tracking-[0.3em] mb-10">Présentation générale</h2>
-          <p className="text-2xl md:text-4xl font-black tracking-tight leading-tight">
+          <p className="text-2xl md:text-4xl font-black tracking-tight leading-tight text-black">
             Samuel Panzu exerce un ministère prophétique et apostolique au service de Jésus-Christ depuis plus de trente ans.
           </p>
         </motion.div>
       </section>
 
       {/* ================= FRISE CHRONOLOGIQUE ================= */}
-      <section className="py-24 md:py-32 bg-[#0a0a0a] text-white" aria-labelledby="parcours-title">
+      <section className="py-24 md:py-32 bg-black text-white" aria-labelledby="parcours-title">
         <div className="max-w-5xl mx-auto px-6">
           <motion.h2 {...fadeUp} id="parcours-title" className="text-4xl md:text-6xl font-black tracking-tighter uppercase mb-16 md:mb-24">
             Un parcours.
@@ -125,10 +125,10 @@ export default function BiographiePage() {
                 transition={{ delay: i * 0.05 }}
                 className="relative pl-10 md:pl-16 pb-14 last:pb-0"
               >
-                <span className="absolute -left-[7px] top-2 w-3.5 h-3.5 rounded-full bg-white ring-4 ring-[#0a0a0a]" aria-hidden="true" />
-                <p className="text-5xl md:text-7xl font-black tracking-tighter text-white/15 leading-none mb-3">{step.year}</p>
+                <span className="absolute -left-[7px] top-2 w-3.5 h-3.5 rounded-full bg-gold ring-4 ring-black" aria-hidden="true" />
+                <p className="text-5xl md:text-7xl font-black tracking-tighter text-gold/40 leading-none mb-3">{step.year}</p>
                 <h3 className="text-xl md:text-2xl font-black uppercase tracking-tight mb-3">{step.title}</h3>
-                <p className="text-gray-400 text-base md:text-lg leading-relaxed font-medium max-w-2xl">{step.text}</p>
+                <p className="text-white/75 text-base md:text-lg leading-relaxed font-medium max-w-2xl">{step.text}</p>
               </motion.li>
             ))}
           </ol>
@@ -187,7 +187,7 @@ export default function BiographiePage() {
             <p className="text-3xl md:text-5xl font-black tracking-tight leading-tight mb-8">
               Marié à Filomena Panzu depuis près de 26 ans, père de quatre enfants.
             </p>
-            <Link href="/about" className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-widest border-b-2 border-black pb-1 hover:text-gray-500 hover:border-gray-500 transition">
+            <Link href="/#couple-pastoral" className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-widest border-b-2 border-black pb-1 hover:text-gray-500 hover:border-gray-500 transition">
               Découvrir le couple pastoral <ArrowRight size={16} />
             </Link>
           </motion.div>
@@ -195,7 +195,7 @@ export default function BiographiePage() {
       </section>
 
       {/* ================= MISSION ACTUELLE ================= */}
-      <section className="py-24 md:py-32 bg-[#0a0a0a] text-white">
+      <section className="py-24 md:py-32 bg-black text-white">
         <div className="max-w-7xl mx-auto px-6">
           <motion.h2 {...fadeUp} className="text-4xl md:text-6xl font-black tracking-tighter uppercase mb-16 text-center">
             Mission actuelle.
@@ -204,8 +204,8 @@ export default function BiographiePage() {
             {mission.map((item, i) => {
               const Icon = item.icon;
               return (
-                <motion.div key={item.title} {...fadeUp} transition={{ delay: i * 0.08 }} className="bg-[#0a0a0a] p-10 flex flex-col gap-6">
-                  <Icon size={28} className="text-white/60" />
+                <motion.div key={item.title} {...fadeUp} transition={{ delay: i * 0.08 }} className="bg-black p-10 flex flex-col gap-6">
+                  <Icon size={28} className="text-gold" />
                   <h3 className="text-xl font-black uppercase tracking-tight leading-snug">{item.title}</h3>
                 </motion.div>
               );

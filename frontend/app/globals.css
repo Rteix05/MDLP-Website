@@ -15,6 +15,20 @@ input, textarea, [contenteditable] {
   --foreground: #171717;
 }
 
+/*
+ * Charte MDLP : violet #800080, or #FFD700, blanc #FFFFFF.
+ * « black » est redéfini en violet : toutes les classes bg-black / text-black / border-black
+ * du site prennent la couleur de la charte. Les nuances sombres gray-900/950 suivent aussi.
+ * « gold » sert aux accents (boutons et sur-titres sur fond violet).
+ */
+@theme {
+  --color-black: #800080;
+  --color-gray-900: #800080;
+  --color-gray-950: #800080;
+  --color-gold: #FFD700;
+  --color-violet-deep: #660066;
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);

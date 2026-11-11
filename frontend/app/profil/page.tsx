@@ -232,12 +232,6 @@ export default function ProfilePage() {
                                     <span className="text-xs font-bold uppercase tracking-widest">Utilisateurs</span>
                                 </div>
                             </Link>
-                            <Link href="/admin/courses" onClick={() => setIsSidebarOpen(false)}>
-                                <div className="flex items-center gap-4 p-4 text-gray-500 hover:bg-gray-50 hover:text-gray-900 rounded-lg cursor-pointer transition group">
-                                    <BookOpen size={18} className="group-hover:scale-110 transition-transform"/> 
-                                    <span className="text-xs font-bold uppercase tracking-widest">Cours</span>
-                                </div>
-                            </Link>
                             <Link href="/admin/payments" onClick={() => setIsSidebarOpen(false)}>
                                 <div className="flex items-center gap-4 p-4 text-gray-500 hover:bg-gray-50 hover:text-gray-900 rounded-lg cursor-pointer transition group">
                                     <CreditCard size={18} className="group-hover:scale-110 transition-transform"/> 

@@ -46,17 +46,17 @@ export default function Navbar({ theme = 'dark' }: NavbarProps) {
   if (theme === 'home') {
     navBg = scrolled ? 'bg-white shadow-sm py-4' : 'bg-transparent py-8';
     textColor = scrolled ? 'text-black' : 'text-white';
-    btnStyle = scrolled 
-        ? 'bg-black text-white hover:bg-gray-800' 
-        : 'bg-white text-black hover:bg-gray-200';
+    btnStyle = scrolled
+        ? 'bg-black text-white hover:bg-violet-deep'
+        : 'bg-gold text-black hover:bg-white';
   } else if (theme === 'light') {
     navBg = scrolled ? 'bg-white/90 backdrop-blur-md shadow-sm border-b border-gray-100 py-4' : 'bg-white py-6';
     textColor = 'text-black';
-    btnStyle = 'bg-black text-white hover:bg-gray-800';
+    btnStyle = 'bg-black text-white hover:bg-violet-deep';
   } else {
-    navBg = scrolled ? 'bg-[#0a0a0a]/90 backdrop-blur-md border-b border-white/10 py-4' : 'bg-transparent py-6';
+    navBg = scrolled ? 'bg-black/90 backdrop-blur-md border-b border-white/10 py-4' : 'bg-transparent py-6';
     textColor = 'text-white';
-    btnStyle = 'bg-white text-black hover:bg-gray-200';
+    btnStyle = 'bg-gold text-black hover:bg-white';
   }
 
   // Empêcher le scroll quand le menu mobile est ouvert
@@ -80,9 +80,6 @@ export default function Navbar({ theme = 'dark' }: NavbarProps) {
 
           {/* MENU DESKTOP */}
           <div className="hidden md:flex items-center gap-8">
-            <Link href="/about" className={`text-xs font-bold uppercase tracking-[0.15em] hover:opacity-50 transition ${textColor}`}>
-              À propos
-            </Link>
             <Link href="/biographie" className={`text-xs font-bold uppercase tracking-[0.15em] hover:opacity-50 transition ${textColor}`}>
               Biographie
             </Link>
@@ -94,9 +91,6 @@ export default function Navbar({ theme = 'dark' }: NavbarProps) {
                   </span>
                 )}
                 Live
-            </Link>
-            <Link href="/courses" className={`text-xs font-bold uppercase tracking-[0.15em] hover:opacity-50 transition ${textColor}`}>
-              Cours
             </Link>
             <Link href="/planning" className={`text-xs font-bold uppercase tracking-[0.15em] hover:opacity-50 transition ${textColor}`}>
               Calendrier
@@ -143,18 +137,18 @@ export default function Navbar({ theme = 'dark' }: NavbarProps) {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: '-100%' }}
             transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-            className="fixed inset-0 z-[55] bg-[#0a0a0a] flex flex-col justify-center px-8"
+            className="fixed inset-0 z-[55] bg-black flex flex-col justify-center px-8"
           >
             <div className="flex flex-col gap-6 text-center">
-              <Link href="/about" onClick={() => setMobileMenuOpen(false)} className="text-3xl font-black uppercase tracking-tighter text-white hover:text-gray-400 transition">
-                À propos
+              <Link href="/" onClick={() => setMobileMenuOpen(false)} className="text-3xl font-black uppercase tracking-tighter text-white hover:text-gold transition">
+                Accueil
               </Link>
-              <Link href="/biographie" onClick={() => setMobileMenuOpen(false)} className="text-3xl font-black uppercase tracking-tighter text-white hover:text-gray-400 transition">
+              <Link href="/biographie" onClick={() => setMobileMenuOpen(false)} className="text-3xl font-black uppercase tracking-tighter text-white hover:text-gold transition">
                 Biographie
               </Link>
               
               {/* LIGNE CORRIGÉE POUR LE MOBILE */}
-              <Link href="/live" onClick={() => setMobileMenuOpen(false)} className="text-3xl font-black uppercase tracking-tighter text-white hover:text-gray-400 transition flex items-center justify-center gap-3">
+              <Link href="/live" onClick={() => setMobileMenuOpen(false)} className="text-3xl font-black uppercase tracking-tighter text-white hover:text-gold transition flex items-center justify-center gap-3">
                 {mounted && isLive && (
                   <span className="relative flex h-3 w-3">
                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
@@ -164,13 +158,10 @@ export default function Navbar({ theme = 'dark' }: NavbarProps) {
                 Direct
               </Link>
 
-              <Link href="/courses" onClick={() => setMobileMenuOpen(false)} className="text-3xl font-black uppercase tracking-tighter text-white hover:text-gray-400 transition">
-                Cours
-              </Link>
-              <Link href="/planning" onClick={() => setMobileMenuOpen(false)} className="text-3xl font-black uppercase tracking-tighter text-white hover:text-gray-400 transition">
+              <Link href="/planning" onClick={() => setMobileMenuOpen(false)} className="text-3xl font-black uppercase tracking-tighter text-white hover:text-gold transition">
                 Calendrier
               </Link>
-              <Link href="/don" onClick={() => setMobileMenuOpen(false)} className="text-3xl font-black uppercase tracking-tighter text-white hover:text-gray-400 transition">
+              <Link href="/don" onClick={() => setMobileMenuOpen(false)} className="text-3xl font-black uppercase tracking-tighter text-white hover:text-gold transition">
                 Faire un don
               </Link>
               
@@ -185,7 +176,7 @@ export default function Navbar({ theme = 'dark' }: NavbarProps) {
                   <Link href="/login" onClick={() => setMobileMenuOpen(false)} className="text-sm font-bold uppercase tracking-[0.2em] text-gray-400 hover:text-white transition">
                     Se connecter
                   </Link>
-                  <Link href="/register" onClick={() => setMobileMenuOpen(false)} className="bg-white text-black py-5 px-8 mx-auto w-full max-w-xs font-black uppercase tracking-[0.2em] text-xs hover:bg-gray-200 transition">
+                  <Link href="/register" onClick={() => setMobileMenuOpen(false)} className="bg-gold text-black py-5 px-8 mx-auto w-full max-w-xs font-black uppercase tracking-[0.2em] text-xs hover:bg-white transition">
                     Rejoindre l'église
                   </Link>
                 </div>

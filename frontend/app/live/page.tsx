@@ -60,7 +60,7 @@ export default function LivePage() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] font-sans text-white flex flex-col">
+    <div className="min-h-screen bg-black font-sans text-white flex flex-col">
       
       {/* ================= NAVBAR ================= */}
       <Navbar theme="dark" />
@@ -159,7 +159,7 @@ export default function LivePage() {
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.4 }}
-              className="md:col-span-2 bg-gradient-to-br from-[#1a1a1a] to-[#0a0a0a] border border-white/10 rounded-2xl p-10 flex flex-col md:flex-row items-center justify-between gap-8 mt-4 group hover:border-white/30 transition-colors"
+              className="md:col-span-2 bg-gradient-to-br from-violet-deep to-black border border-white/10 rounded-2xl p-10 flex flex-col md:flex-row items-center justify-between gap-8 mt-4 group hover:border-white/30 transition-colors"
             >
               <div className="flex items-center gap-6">
                 <div className="w-16 h-16 bg-white/5 rounded-full flex items-center justify-center text-gray-400 group-hover:text-white group-hover:scale-110 transition-all">

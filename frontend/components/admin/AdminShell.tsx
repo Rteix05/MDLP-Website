@@ -3,7 +3,7 @@
 import { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { ArrowLeft, BookOpen, CalendarClock, CreditCard, LayoutDashboard, Menu, Users, X } from 'lucide-react';
+import { ArrowLeft, CalendarClock, CreditCard, LayoutDashboard, Menu, Users, X } from 'lucide-react';
 import { adminFetch } from '@/lib/adminApi';
 import { AdminProviders } from './ui';
 
@@ -14,9 +14,6 @@ export const usePending = () => useContext(PendingContext);
 const NAV = [
   { section: null, items: [
     { href: '/admin', label: "Vue d'ensemble", icon: LayoutDashboard, badge: true },
-  ] },
-  { section: 'Contenus', items: [
-    { href: '/admin/courses', label: 'Cours', icon: BookOpen },
   ] },
   { section: 'Membres & dons', items: [
     { href: '/admin/users', label: 'Utilisateurs', icon: Users },
@@ -32,7 +29,7 @@ function Sidebar({ pending, onNavigate }: { pending: number; onNavigate?: () => 
     <div className="flex flex-col h-full">
       <div className="px-6 py-6 border-b border-white/10">
         <p className="text-2xl font-black tracking-tighter text-white">MDLP.</p>
-        <p className="text-[11px] font-bold uppercase tracking-widest text-gray-400 mt-0.5">Administration</p>
+        <p className="text-[11px] font-bold uppercase tracking-widest text-gold mt-0.5">Administration</p>
       </div>
 
       <nav className="flex-1 overflow-y-auto px-3 py-5 space-y-6" aria-label="Menu d'administration">
@@ -56,7 +53,7 @@ function Sidebar({ pending, onNavigate }: { pending: number; onNavigate?: () => 
                       <Icon size={18} />
                       <span className="flex-1">{item.label}</span>
                       {'badge' in item && item.badge && pending > 0 && (
-                        <span className="min-w-5 h-5 px-1.5 rounded-full bg-amber-400 text-gray-900 text-[11px] font-black flex items-center justify-center" title={`${pending} rendez-vous en attente`}>
+                        <span className="min-w-5 h-5 px-1.5 rounded-full bg-gold text-black text-[11px] font-black flex items-center justify-center" title={`${pending} rendez-vous en attente`}>
                           {pending}
                         </span>
                       )}
@@ -107,7 +104,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
             <p className="text-lg font-black tracking-tighter text-white">MDLP. <span className="text-xs font-bold uppercase tracking-widest text-gray-400 ml-1">Admin</span></p>
             <button onClick={() => setMobileOpen(true)} className="relative p-2 text-white" aria-label="Ouvrir le menu">
               <Menu size={22} />
-              {pending > 0 && <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-amber-400" />}
+              {pending > 0 && <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-gold" />}
             </button>
           </div>
           {mobileOpen && (

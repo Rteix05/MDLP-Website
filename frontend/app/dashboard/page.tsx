@@ -296,12 +296,6 @@ export default function DashboardPage() {
                                     <span className="text-xs font-bold uppercase tracking-widest">Utilisateurs</span>
                                 </div>
                             </Link>
-                            <Link href="/admin/courses" onClick={() => setIsSidebarOpen(false)}>
-                                <div className="flex items-center gap-4 p-4 text-gray-500 hover:bg-gray-50 hover:text-gray-900 rounded-lg cursor-pointer transition group">
-                                    <BookOpen size={18} className="group-hover:scale-110 transition-transform"/> 
-                                    <span className="text-xs font-bold uppercase tracking-widest">Cours</span>
-                                </div>
-                            </Link>
                             <Link href="/admin/payments" onClick={() => setIsSidebarOpen(false)}>
                                 <div className="flex items-center gap-4 p-4 text-gray-500 hover:bg-gray-50 hover:text-gray-900 rounded-lg cursor-pointer transition group">
                                     <CreditCard size={18} className="group-hover:scale-110 transition-transform"/> 
@@ -451,14 +445,10 @@ export default function DashboardPage() {
                         {isAdmin && (
                             <section>
                                 <h2 className="text-xs font-bold text-gray-400 uppercase tracking-[0.2em] mb-4 pl-1">Accès Rapide</h2>
-                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                     <button onClick={() => router.push('/admin/users')} className="bg-white border border-gray-200 hover:border-black text-gray-900 px-6 py-6 md:py-8 rounded-xl md:rounded-2xl font-bold text-xs uppercase tracking-widest flex flex-col items-center justify-center gap-3 shadow-sm transition-all duration-300 group">
                                         <Users size={28} className="text-gray-300 group-hover:text-black group-hover:scale-110 transition-all" /> 
                                         Utilisateurs
-                                    </button>
-                                    <button onClick={() => router.push('/admin/courses')} className="bg-white border border-gray-200 hover:border-black text-gray-900 px-6 py-6 md:py-8 rounded-xl md:rounded-2xl font-bold text-xs uppercase tracking-widest flex flex-col items-center justify-center gap-3 shadow-sm transition-all duration-300 group">
-                                        <BookOpen size={28} className="text-gray-300 group-hover:text-black group-hover:scale-110 transition-all" /> 
-                                        Cours
                                     </button>
                                     <button onClick={() => router.push('/admin/payments')} className="bg-white border border-gray-200 hover:border-black text-gray-900 px-6 py-6 md:py-8 rounded-xl md:rounded-2xl font-bold text-xs uppercase tracking-widest flex flex-col items-center justify-center gap-3 shadow-sm transition-all duration-300 group">
                                         <CreditCard size={28} className="text-gray-300 group-hover:text-black group-hover:scale-110 transition-all" /> 

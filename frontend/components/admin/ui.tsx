@@ -79,7 +79,7 @@ export function SkeletonRows({ rows = 4 }: { rows?: number }) {
 /* ------------------------------------------------------------------ */
 
 const buttonVariants = {
-  primary: 'bg-gray-900 text-white hover:bg-black',
+  primary: 'bg-black text-white hover:bg-violet-deep',
   secondary: 'bg-white text-gray-700 border border-gray-200 hover:border-gray-400 hover:text-gray-900',
   success: 'bg-emerald-600 text-white hover:bg-emerald-700',
   danger: 'bg-red-600 text-white hover:bg-red-700',

@@ -78,7 +78,7 @@ export default function DonationPage() {
 
     return (
         <>
-        <div className="min-h-screen bg-gradient-to-br from-[#111] via-[#0a0a0a] to-black font-sans text-gray-900 flex flex-col">
+        <div className="min-h-screen bg-gradient-to-br from-violet-deep via-black to-black font-sans text-gray-900 flex flex-col">
             
             {loadingStripe && <Loader />}
 
