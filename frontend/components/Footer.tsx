@@ -10,6 +10,14 @@ const navigation = [
   { href: '/contact', label: 'Contact' },
 ];
 
+const legal = [
+  { href: '/mentions-legales', label: 'Mentions légales' },
+  { href: '/cgu', label: 'CGU' },
+  { href: '/conditions-des-dons', label: 'Conditions des dons' },
+  { href: '/politique-de-confidentialite', label: 'Confidentialité' },
+  { href: '/accessibilite', label: 'Accessibilité' },
+];
+
 const socials = [
   { href: 'https://www.youtube.com/@SamuelPanzuTV', label: 'YouTube', icon: Youtube },
   { href: 'https://www.facebook.com/samuel.panzu.7', label: 'Facebook', icon: Facebook },
@@ -99,8 +107,13 @@ export default function Footer() {
 
       {/* Bas de page */}
       <div className="border-t border-white/10">
-        <div className="max-w-7xl mx-auto px-6 py-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-white/50">
-          <p>&copy; {new Date().getFullYear()} La Montagne de la Prière Ministries. Tous droits réservés.</p>
+        <div className="max-w-7xl mx-auto px-6 py-6 flex flex-col lg:flex-row items-center justify-between gap-4 text-xs text-white/50">
+          <p className="text-center lg:text-left">&copy; {new Date().getFullYear()} La Montagne de la Prière Ministries. Tous droits réservés.</p>
+          <nav aria-label="Informations légales" className="flex flex-wrap justify-center gap-x-5 gap-y-2">
+            {legal.map(item => (
+              <Link key={item.href} href={item.href} className="hover:text-gold transition">{item.label}</Link>
+            ))}
+          </nav>
           <a
             href="https://www.rafaelteixeira.fr"
             target="_blank"

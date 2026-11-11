@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import Script from "next/script";
+import DisplayPreferences from "@/components/DisplayPreferences";
+import { DISPLAY_BOOT_SCRIPT } from "@/lib/displayPrefs";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -45,11 +48,14 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="fr">
+    <html lang="fr" suppressHydrationWarning>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
+        {/* Réglages d'affichage (thème, taille du texte, gras) appliqués avant l'hydratation */}
+        <Script id="mdlp-affichage" strategy="beforeInteractive">{DISPLAY_BOOT_SCRIPT}</Script>
         {children}
+        <DisplayPreferences />
       </body>
     </html>
   );

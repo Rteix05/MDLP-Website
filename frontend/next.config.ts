@@ -13,6 +13,7 @@ const nextConfig: NextConfig = {
       { source: '/about', destination: '/', permanent: true },
       { source: '/courses', destination: '/', permanent: true },
       { source: '/admin/courses', destination: '/admin', permanent: false },
+      { source: '/cgv', destination: '/conditions-des-dons', permanent: true },
     ];
   },
 };

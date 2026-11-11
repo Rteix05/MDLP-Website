@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { PayPalScriptProvider, PayPalButtons } from "@paypal/react-paypal-js";
 import Cookies from 'js-cookie';
 import { useRouter } from 'next/navigation';
@@ -172,6 +173,12 @@ export default function DonationPage() {
                                 </button>
                             )}
                         </div>
+
+                        <p className="mt-6 text-center text-[11px] text-gray-500 leading-relaxed">
+                            En faisant un don, vous acceptez les{' '}
+                            <Link href="/conditions-des-dons" className="font-bold text-black underline underline-offset-2">conditions des dons</Link>.
+                            Paiement sécurisé : vos données bancaires ne transitent pas par nos serveurs.
+                        </p>
                     </div>
 
                 </div>
