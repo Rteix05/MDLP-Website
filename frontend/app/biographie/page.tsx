@@ -69,7 +69,7 @@ export default function BiographiePage() {
 
       {/* ================= HERO ================= */}
       <header className="relative min-h-screen w-full bg-black overflow-hidden flex items-center">
-        <div className="absolute inset-0 bg-cover bg-center opacity-30 scale-105" style={{ backgroundImage: "url('/church4.jpg')" }} />
+        <div className="absolute inset-0 bg-cover bg-center opacity-30 scale-105" style={{ backgroundImage: "url('/photos/slider-assemblee.webp')" }} />
         <div className="absolute inset-0 bg-gradient-to-t from-black via-black/70 to-black/30" />
 
         <div className="relative z-10 max-w-7xl mx-auto px-6 pt-32 pb-20 grid md:grid-cols-[1.2fr_1fr] gap-12 items-center w-full">
@@ -94,7 +94,7 @@ export default function BiographiePage() {
             className="relative max-w-sm md:max-w-none mx-auto w-full"
           >
             <div className="bg-white/5 overflow-hidden">
-              <img src="/086A9997_small.jpg" alt="Le pasteur Samuel Panzu" className="w-full h-auto object-contain grayscale" />
+              <img src="/photos/pasteur-samuel-panzu.webp" alt="Le pasteur Samuel Panzu" className="w-full h-auto object-contain" />
             </div>
           </motion.div>
         </div>
@@ -180,7 +180,7 @@ export default function BiographiePage() {
       <section className="py-24 md:py-32 bg-white">
         <div className="max-w-7xl mx-auto px-6 grid md:grid-cols-2 gap-16 items-center">
           <motion.div {...fadeUp} className="bg-gray-100 overflow-hidden max-w-md mx-auto md:mx-0 w-full">
-            <img src="/086A9088_small.jpg" alt="Filomena Panzu" className="w-full h-auto object-contain grayscale hover:grayscale-0 transition-all duration-700" />
+            <img src="/photos/couple-pastoral.webp" alt="Le pasteur Samuel Panzu et son épouse Filomena Panzu" className="w-full h-auto object-contain" />
           </motion.div>
           <motion.div {...fadeUp} transition={{ delay: 0.1 }}>
             <h2 className="text-xs font-bold text-gray-500 uppercase tracking-[0.3em] mb-6">Vie familiale</h2>
@@ -192,6 +192,17 @@ export default function BiographiePage() {
             </Link>
           </motion.div>
         </div>
+      </section>
+
+      {/* ================= LE COUPLE EN PRIÈRE (bandeau photo) ================= */}
+      <section aria-label="Le pasteur Samuel Panzu et Filomena Panzu en prière" className="bg-white">
+        <motion.div {...fadeUp} className="max-w-7xl mx-auto px-6 pb-24 md:pb-32">
+          <img
+            src="/photos/couple-pastoral-priere.webp"
+            alt="Le pasteur Samuel Panzu et Filomena Panzu, dos à dos, les mains jointes en prière"
+            className="w-full h-auto"
+          />
+        </motion.div>
       </section>
 
       {/* ================= MISSION ACTUELLE ================= */}
