@@ -11,7 +11,7 @@ import Footer from '@/components/Footer';
 const slides = [
   {
     id: 1,
-    image: '/church1.jpg',
+    image: '/photos/slider-louange.webp',
     subtitle: 'DIMANCHES À 10H00',
     title: 'VIVRE SA PRÉSENCE.',
     link: '/contact',
@@ -19,7 +19,7 @@ const slides = [
   },
   {
     id: 2,
-    image: '/church3.jpg',
+    image: '/photos/slider-assemblee.webp',
     subtitle: 'COMMUNAUTÉ',
     title: 'GRANDIR ENSEMBLE.',
     link: '/biographie',
@@ -27,7 +27,7 @@ const slides = [
   },
   {
     id: 3,
-    image: '/church6.jpg',
+    image: '/photos/slider-evenement.webp',
     subtitle: 'ÉVÉNEMENTS',
     title: 'UNE ÉGLISE EN ACTION.',
     link: '/planning',
@@ -35,7 +35,7 @@ const slides = [
   },
   {
     id: 4,
-    image: '/church_kids1.jpg',
+    image: '/photos/slider-conference.webp',
     subtitle: 'MDLP KIDS',
     title: 'LA PROCHAINE GÉNÉRATION.',
     link: '/contact',
@@ -43,7 +43,7 @@ const slides = [
   },
   {
     id: 5,
-    image: '/church8.jpg',
+    image: '/photos/slider-culte.webp',
     subtitle: 'LOUANGE',
     title: 'ÉLEVER SA VOIX.',
     link: '/live',
@@ -57,13 +57,13 @@ const team = [
     id: 1,
     name: 'Pasteur Samuel Panzu',
     role: 'Pasteur Principal',
-    image: '/086A9997_small.jpg'
+    image: '/photos/pasteur-samuel-panzu.webp'
   },
   {
     id: 2,
     name: 'Pastoresse Filomena Panzu',
     role: 'Pastoresse',
-    image: '/086A9088_small.jpg'
+    image: '/photos/pastoresse-filomena-panzu.webp'
   }
 ];
 
