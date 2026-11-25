@@ -213,8 +213,10 @@ export default function HomePage() {
             viewport={{ once: true }}
             className="h-[500px] bg-white/5 relative overflow-hidden"
           >
-            <div className="absolute inset-0 bg-cover bg-center grayscale opacity-80 hover:scale-105 transition-transform duration-1000"
-              style={{ backgroundImage: "url('/church6.jpg')" }}>
+            {/* Photo en hauteur : cadrée sur les visages (25 % depuis le haut) */}
+            <div className="absolute inset-0 bg-cover bg-[center_25%] grayscale opacity-80 hover:scale-105 transition-transform duration-1000"
+              role="img" aria-label="L'assemblée attentive pendant le culte"
+              style={{ backgroundImage: "url('/photos/culte-assemblee.webp')" }}>
             </div>
           </motion.div>
 
@@ -226,7 +228,8 @@ export default function HomePage() {
             className="h-[500px] bg-white/5 relative overflow-hidden order-last md:order-none"
           >
             <div className="absolute inset-0 bg-cover bg-center grayscale opacity-80 hover:scale-105 transition-transform duration-1000"
-              style={{ backgroundImage: "url('/church_kids1.jpg')" }}>
+              role="img" aria-label="Les enfants de MDLP Kids rassemblés devant l'estrade"
+              style={{ backgroundImage: "url('/photos/mdlp-kids.webp')" }}>
             </div>
           </motion.div>
 
